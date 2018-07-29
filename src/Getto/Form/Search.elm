@@ -161,10 +161,12 @@ p content = H.p [] [ content |> H.text ]
 
 editLink : String -> Html msg
 editLink href =
-  H.a [ A.href href ]
-    [ Fa.solid "edit" []
-    , H.text " "
-    , "link.edit" |> I18n.t |> H.text
+  H.p []
+    [ H.a [ A.href href ]
+      [ Fa.solid "edit" []
+      , H.text " "
+      , "link.edit" |> I18n.t |> H.text
+      ]
     ]
 
 editButton : (model -> msg) -> Form.Content model msg
@@ -177,10 +179,12 @@ deleteButton msg model =
 
 downloadLink : String -> Html msg
 downloadLink href =
-  H.a [ A.href <| href ]
-    [ Fa.solid "file" []
-    , H.text " "
-    , "link.download" |> I18n.t |> H.text
+  H.p []
+    [ H.a [ A.href <| href ]
+      [ Fa.solid "file" []
+      , H.text " "
+      , "link.download" |> I18n.t |> H.text
+      ]
     ]
 
 
