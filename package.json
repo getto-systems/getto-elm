@@ -1,6 +1,6 @@
 {
   "name": "getto-elm",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "description": "basic structure with elm",
   "scripts": {
     "build": "./bin/build.sh",
