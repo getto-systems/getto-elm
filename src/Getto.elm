@@ -67,7 +67,7 @@ type alias Project =
   }
 
 type alias Credential =
-  { loginID      : String
+  { login_id     : String
   , rememberMe   : Bool
   , role         : List String
   , token        : Maybe String
