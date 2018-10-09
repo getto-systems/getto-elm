@@ -28,7 +28,7 @@ type alias Token =
 type alias Info =
   { id : Int
   , role : List String
-  , loginID : String
+  , login_id : String
   , renewedAt : String
   }
 
@@ -73,7 +73,7 @@ info =
   Decode.succeed Info
   |: (Decode.at ["sub"] Decode.int)
   |: (Decode.at ["aud"] (Decode.list Decode.string))
-  |: (Decode.at ["loginID"] Decode.string)
+  |: (Decode.at ["login_id"] Decode.string)
   |: (Decode.at ["renewedAt"] Decode.string)
 
 
@@ -86,7 +86,7 @@ init opts flags =
 
     storage = flags.storage.global.credential
     credential =
-      { loginID    = storage |> Json.decodeValue ["loginID"]    Decode.string              |> default ""
+      { login_id   = storage |> Json.decodeValue ["login_id"]   Decode.string              |> default ""
       , rememberMe = storage |> Json.decodeValue ["rememberMe"] Decode.bool                |> default True
       , role       = storage |> Json.decodeValue ["role"]      (Decode.list Decode.string) |> default []
       , token      = storage |> Json.decodeValue ["token"]      Decode.string
@@ -157,7 +157,7 @@ authenticated result credential =
     Ok auth ->
       { credential
       | role = auth.info.role
-      , loginID = auth.info.loginID
+      , login_id = auth.info.login_id
       , token = Just auth.token
       , oldToken = Nothing
       , renewedAt = Just auth.info.renewedAt
@@ -173,7 +173,7 @@ clear : Getto.Credential -> Getto.Credential
 clear credential =
   { credential
   | role = []
-  , loginID = ""
+  , login_id = ""
   , token = Nothing
   , oldToken = Nothing
   , renewedAt = Nothing
@@ -188,7 +188,7 @@ save = encode >> Storage.saveCredential
 
 encode : Getto.Credential -> Encode.Value
 encode credential = Encode.object
-  [ ("loginID",    credential.loginID    |> Encode.string)
+  [ ("login_id",   credential.login_id   |> Encode.string)
   , ("rememberMe", credential.rememberMe |> Encode.bool)
   , ("role",       credential.role       |> List.map Encode.string |> Encode.list)
   , ("token",      credential.token      |> Maybe.map Encode.string |> Maybe.withDefault Encode.null)
