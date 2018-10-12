@@ -10,6 +10,7 @@ module Getto exposing
   , Credential
   )
 import Getto.Location as Location
+import Getto.Storage as Storage
 
 import Json.Encode as Encode
 
@@ -20,7 +21,7 @@ type alias Flags =
       , menu       : Encode.Value
       , terminal   : Encode.Value
       }
-    , page : List ( String, Encode.Value )
+    , page : Storage.Page
     }
   , page    : Page
   , project : Project
