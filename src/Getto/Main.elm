@@ -34,6 +34,7 @@ init opts flags func = App.init opts flags <|
     let
       info =
         { application = base.application
+        , storage     = base.storage
         , api         = base.api
         , page        = base.page
         , project     = base.project
