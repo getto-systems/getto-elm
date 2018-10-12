@@ -1,3 +1,7 @@
+# Version : 0.0.16
+
+rename: connect -> request
+
 # Version : 0.0.15
 
 feat: Edit.request
