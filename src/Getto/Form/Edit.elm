@@ -5,6 +5,7 @@ module Getto.Form.Edit exposing
   , Modify
   , connect
   , upload
+  , request
   , done
   , continue
   , registered
@@ -104,6 +105,17 @@ connectWith toFields request msg model =
             ( model
             , model |> toFields
             )
+          |> Http.send msg
+        ]
+
+request : (Model a -> Rest.Request data) -> (Rest.RestResult data -> msg) -> Model a -> ( Model a, Cmd msg )
+request request msg model =
+  if (model |> Field.hasError) || (model.update |> Rest.isConnecting)
+    then model ! []
+    else
+      { model | update = Just Rest.Connecting } !
+        [ model.api
+          |> request model
           |> Http.send msg
         ]
 
