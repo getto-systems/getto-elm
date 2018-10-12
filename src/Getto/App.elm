@@ -26,6 +26,7 @@ init opts flags func =
         { version   = opts.version
         , copyright = "GETTO systems"
         }
+      , storage = flags.storage
       , api =
         { token = credential.token
         }

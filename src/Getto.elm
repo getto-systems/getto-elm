@@ -4,6 +4,7 @@ module Getto exposing
   , GeneralInfo
   , Info
   , Application
+  , Storage
   , Api
   , Page
   , Project
@@ -15,14 +16,7 @@ import Getto.Storage as Storage
 import Json.Encode as Encode
 
 type alias Flags =
-  { storage :
-    { global :
-      { credential : Encode.Value
-      , menu       : Encode.Value
-      , terminal   : Encode.Value
-      }
-    , page : Storage.Page
-    }
+  { storage : Storage
   , page    : Page
   , project : Project
   }
@@ -35,6 +29,7 @@ type alias Opts =
 type alias GeneralInfo info =
   { info
   | application : Application
+  , storage     : Storage
   , api         : Api
   , page        : Page
   , project     : Project
@@ -46,6 +41,15 @@ type alias Info = GeneralInfo {}
 type alias Application =
   { version   : String
   , copyright : String
+  }
+
+type alias Storage =
+  { global :
+    { credential : Encode.Value
+    , menu       : Encode.Value
+    , terminal   : Encode.Value
+    }
+  , page : Storage.Page
   }
 
 type alias Api =
