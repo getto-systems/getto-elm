@@ -1,3 +1,9 @@
+# Version : 0.0.15
+
+feat: Edit.request
+
+- more simple request functionally to API
+
 # Version : 0.0.14
 
 feature: Storage functionaly
