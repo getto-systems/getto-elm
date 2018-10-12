@@ -2,6 +2,7 @@ port module Getto.Form.Search exposing
   ( Model
   , fixedMidashi
   , connect
+  , request
   , done
   , update
   , form
@@ -59,8 +60,10 @@ type alias Pairs model msg = List ( List (Form.Content model msg), List (Form.Co
 type alias Modify msg = Field.Method -> Field.Modify -> msg
 
 
-connect : (( Model data row a, Rest.JsonBody ) -> Request data response) -> (Model data row a -> Cmd msg) -> (SearchResult data response -> msg) -> Model data row a -> ( Model data row a, Cmd msg )
-connect request save msg model =
+connect = request
+
+request : (( Model data row a, Rest.JsonBody ) -> Request data response) -> (Model data row a -> Cmd msg) -> (SearchResult data response -> msg) -> Model data row a -> ( Model data row a, Cmd msg )
+request request save msg model =
   if model.search |> Rest.isConnecting
     then model ! []
     else

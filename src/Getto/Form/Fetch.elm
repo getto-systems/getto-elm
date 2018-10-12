@@ -1,6 +1,7 @@
 module Getto.Form.Fetch exposing
   ( Model
   , connect
+  , request
   , done
   , form
   )
@@ -21,8 +22,10 @@ type alias Model a =
   , fetch : Maybe Rest.State
   }
 
-connect : (Model a -> Rest.Request data) -> (Rest.RestResult data -> msg) -> Model a -> ( Model a, Cmd msg )
-connect request msg model =
+connect = request
+
+request : (Model a -> Rest.Request data) -> (Rest.RestResult data -> msg) -> Model a -> ( Model a, Cmd msg )
+request request msg model =
   if model.fetch |> Rest.isConnecting
     then model ! []
     else
