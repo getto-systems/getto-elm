@@ -4,6 +4,7 @@ module Getto.Form.Dialog.Download exposing
   , confirm
   , cancel
   , connect
+  , request
   , done
   , dialog
   , message
@@ -49,8 +50,10 @@ cancel model =
         then model ! []
         else { model | download = Nothing } ! []
 
-connect : Rest.Request Auth.Token -> String -> (String -> FetchResult -> msg) -> Model a -> ( Model a, Cmd msg )
-connect request file msg model =
+connect = request
+
+request : Rest.Request Auth.Token -> String -> (String -> FetchResult -> msg) -> Model a -> ( Model a, Cmd msg )
+request request file msg model =
   case model.download of
     Nothing -> model ! []
     Just dict ->

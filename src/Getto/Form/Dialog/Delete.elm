@@ -3,6 +3,7 @@ module Getto.Form.Dialog.Delete exposing
   , confirm
   , cancel
   , connect
+  , request
   , done
   , form
   , dialog
@@ -42,8 +43,10 @@ cancel model =
     Just (Just (Rest.Connecting)) -> model ! []
     _ -> { model | delete = Nothing } ! []
 
-connect : (Model a -> Rest.Request data) -> (Rest.RestResult data -> msg) -> Model a -> ( Model a, Cmd msg )
-connect request msg model =
+connect = request
+
+request : (Model a -> Rest.Request data) -> (Rest.RestResult data -> msg) -> Model a -> ( Model a, Cmd msg )
+request request msg model =
   case model.delete of
     Nothing -> model ! []
     Just state ->
