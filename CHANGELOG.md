@@ -1,3 +1,10 @@
+# Version : 0.0.14
+
+feature: Storage functionaly
+
+- add Getto.Storage to Getto.GeneralInfo
+- add Getto.Storage.Page type alias
+
 # Version : 0.0.13
 
 fix: loginID -> login_id
