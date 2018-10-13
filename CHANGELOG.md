@@ -1,3 +1,7 @@
+# Version : 0.0.17
+
+feat: GET request by Rest
+
 # Version : 0.0.16
 
 rename: connect -> request
