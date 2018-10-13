@@ -25,12 +25,16 @@ module Getto.Form.Search.Field exposing
   , decodeSearch
   , encode
   , encodeSearch
+  , sortQuery
+  , pageQuery
+  , query
   , encodeFields
   )
 import Getto.Form.Edit.Field.Validate as Validate
 
 import Getto.Location as Location
 import Getto.Rest as Rest
+import Getto.Rest.Query as Query
 import Getto.Json as Json
 
 import Json.Decode as Decode
@@ -363,11 +367,12 @@ toSortString = toSortSignature >>
   )
 
 
-key =
+keys =
   { page   = "page"
   , sort   = "sort"
   , column = "column"
   , order  = "order"
+  , query  = "query"
   , pairs  = "pairs"
   , method = "method"
   , search = "search"
@@ -378,22 +383,22 @@ key =
 decodeSearch : Location.Search -> Model a -> Model a
 decodeSearch search model =
   let
-    find method =
+    findQuery method =
       List.Extra.find
         (\(key,_) ->
           let
             (column,op) = method |> toSignature
           in
-            key == (column ++ "." ++ op)
+            key == (keys.query ++ "[" ++ column ++ "." ++ op ++ "]")
         )
 
     toStringValue method default =
-      find method
+      findQuery method
       >> Maybe.map Tuple.second
       >> Maybe.withDefault default
 
     toList decoder method default search =
-      case search |> find method of
+      case search |> findQuery method of
         Just _ -> []
         Nothing ->
           search
@@ -418,7 +423,7 @@ decodeSearch search model =
 
     decodeSort =
       search
-      |> List.Extra.find (Tuple.first >> (==) key.sort)
+      |> List.Extra.find (Tuple.first >> (==) keys.sort)
       |> Maybe.andThen
         (\(_,value) ->
           model.fields.sort.columns
@@ -436,7 +441,7 @@ decodeSearch search model =
 
     decodePage =
       search
-      |> List.Extra.find (Tuple.first >> (==) key.page)
+      |> List.Extra.find (Tuple.first >> (==) keys.page)
       |> Maybe.andThen
         (\(_,value) ->
           value
@@ -467,47 +472,62 @@ encode = encodeFields >> Encode.object
 
 encodeSearch : Model a -> Location.Search
 encodeSearch model =
-  let
-    encodeSpec spec =
-      case spec of
-        String    _   value -> [ ( "", value ) ]
-        CheckList _ _ group -> group |> encodeGroup
-        BoolList  _   group -> group |> encodeGroup
+  [ ( keys.query
+    , model.fields.pairs
+      |> Dict.toList
+      |> List.map
+        (\((name,op),spec) ->
+          ( name ++ "." ++ op
+          , spec |> specQuery
+          )
+        )
+      |> Query.group
+    )
+  , ( keys.sort, model |> sortQuery )
+  , ( keys.page, model |> pageQuery )
+  ] |> Query.search
 
-    encodeGroup group =
-      let
-        values = group |> actives
-      in
-        if values |> List.isEmpty
-          then [ ( "", "" ) ]
-          else values |> List.map (\val -> ( "[]", val ))
+sortQuery : Model a -> Query.SearchValue
+sortQuery =
+  .fields
+  >> .sort
+  >> .current
+  >> Maybe.map toSortString
+  >> Maybe.withDefault ""
+  >> Query.string
 
-    sort spec =
-      spec.current
-      |> Maybe.map toSortString
-      |> Maybe.withDefault ""
-  in
-    model.fields.pairs
-    |> Dict.toList
-    |> List.concatMap
-      (\((name,op),spec) ->
-        spec |> encodeSpec |> List.map (\(suffix,val) -> ( name ++ "." ++ op ++ suffix, val ))
-      )
-    |> List.append [(key.sort, model.fields.sort |> sort)]
-    |> List.append [(key.page, model.fields.page |> toString)]
+pageQuery : Model a -> Query.SearchValue
+pageQuery =
+  .fields
+  >> .page
+  >> toString
+  >> Query.string
+
+query : Method -> Model a -> Query.SearchValue
+query method =
+  find method
+  >> Maybe.map specQuery
+  >> Maybe.withDefault (Query.string "")
+
+specQuery : Spec -> Query.SearchValue
+specQuery spec =
+  case spec of
+    String    _   value -> Query.string value
+    CheckList _ _ group -> Query.list (group |> actives)
+    BoolList  _   group -> Query.list (group |> actives)
 
 encodeFields : Model a -> Rest.JsonBody
 encodeFields model =
-  [ ( key.page,  model.fields.page         |> Encode.int )
-  , ( key.sort,  model.fields.sort.current |> Maybe.map encodeSort |> Maybe.withDefault Encode.null )
-  , ( key.pairs, model.fields.pairs        |> encodePairs )
+  [ ( keys.page,  model.fields.page         |> Encode.int )
+  , ( keys.sort,  model.fields.sort.current |> Maybe.map encodeSort |> Maybe.withDefault Encode.null )
+  , ( keys.pairs, model.fields.pairs        |> encodePairs )
   ]
 
 encodeSort : SortPair -> Encode.Value
 encodeSort = toSortSignature >>
   (\(column,order) ->
-    [ ( key.column, column |> Encode.string )
-    , ( key.order,  order  |> Encode.string )
+    [ ( keys.column, column |> Encode.string )
+    , ( keys.order,  order  |> Encode.string )
     ] |> Encode.object
   )
 
@@ -516,15 +536,15 @@ encodePairs =
   let
     encodeSpec spec =
       case spec of
-        String    _   value -> ( key.search, value |> Encode.string )
-        CheckList _ _ group -> ( key.check,  group |> actives |> List.map Encode.string |> Encode.list )
-        BoolList  _   group -> ( key.bool,   group |> actives |> List.map (toBool >> Encode.bool) |> Encode.list )
+        String    _   value -> ( keys.search, value |> Encode.string )
+        CheckList _ _ group -> ( keys.check,  group |> actives |> List.map Encode.string |> Encode.list )
+        BoolList  _   group -> ( keys.bool,   group |> actives |> List.map (toBool >> Encode.bool) |> Encode.list )
   in
     Dict.toList
     >> List.map
       (\((name,op),spec) ->
-        [ ( key.column,    name |> Encode.string )
-        , ( key.method, op   |> Encode.string )
+        [ ( keys.column, name |> Encode.string )
+        , ( keys.method, op   |> Encode.string )
         , spec |> encodeSpec
         ] |> Encode.object
       )
