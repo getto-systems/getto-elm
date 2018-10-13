@@ -5,6 +5,7 @@ module Getto.Rest exposing
   , Request
   , RestResult
   , isConnecting
+  , get
   , fetch
   , create
   , update
@@ -42,6 +43,10 @@ type alias RestResult a = Result Http.Error a
 
 isConnecting : Maybe State -> Bool
 isConnecting = (==) (Just Connecting)
+
+get : Decode.Decoder a -> List ( String, Location.Search ) -> String -> Getto.Api -> Http.Request a
+get decoder data path api =
+  request (always Http.emptyBody) "GET" decoder () (path |> Href.url (data |> search)) api
 
 {--
  -- fetch が GET ではなく PUT なのは意図したもの
