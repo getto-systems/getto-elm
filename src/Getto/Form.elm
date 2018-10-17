@@ -2,6 +2,7 @@ module Getto.Form exposing
   ( Content
   , text
   , none
+  , maybe
   , br
   , badge
   , submit
@@ -21,6 +22,9 @@ text message = always <| H.text message
 
 none : Content model msg
 none = text ""
+
+maybe : Content model msg -> Maybe model -> Html msg
+maybe f = Maybe.map f >> Maybe.withDefault (H.text "")
 
 br : Content model msg
 br = always <| H.br [] []
