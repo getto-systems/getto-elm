@@ -313,20 +313,19 @@ commitWith class type_ model = model |>
             [ type_ ++ ".submit" |> I18n.t |> Form.text ]
 
 error : Content a msg
-error = errorWith []
+error = errorWith ( I18n.rest, [] )
 
-errorWith : List ( String, String ) -> Content a msg
-errorWith list model = model |>
+errorWith : ( (String -> String), List String ) -> Content a msg
+errorWith (i18n,list) model = model |>
   case model.update of
     Just (Rest.Err error) ->
-      let
-        message = error |> Rest.error
-      in
-        list
-        |> Dict.fromList
-        |> Dict.get message
-        |> Maybe.withDefault (message |> I18n.rest)
-        |> Form.badge "is-danger is-small"
+      error |> Rest.error |>
+        (\m ->
+          if list |> List.member m
+            then m |> i18n
+            else m |> I18n.rest
+        )
+      |> Form.badge "is-danger is-small"
 
     _ -> Form.none
 
