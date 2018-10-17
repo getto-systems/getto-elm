@@ -1,7 +1,7 @@
 module Getto.App exposing
   ( init
-  , info
-  , credential
+  , info_
+  , info_credential_
   )
 import Getto
 import Getto.Env as Env
@@ -15,7 +15,7 @@ import Json.Decode as Decode
 import Json.Decode.Extra exposing ((|:))
 import Json.Encode as Encode
 
-import Focus exposing ( Focus )
+import Focus exposing ( (=>) )
 
 init : Getto.Opts -> Getto.Flags -> (Getto.Info -> ( model, Cmd msg )) -> ( model, Cmd msg )
 init opts flags func =
@@ -39,8 +39,7 @@ init opts flags func =
     |> Moment.andThen func
 
 
-info : Focus { model | info : info } info
-info = Focus.create .info (\f model -> { model | info = model.info |> f })
+info_       = Focus.create .info       (\f model -> { model | info       = model.info       |> f })
+credential_ = Focus.create .credential (\f model -> { model | credential = model.credential |> f })
 
-credential : Focus { model | credential : credential } credential
-credential = Focus.create .credential (\f model -> { model | credential = model.credential |> f })
+info_credential_ = info_ => credential_
