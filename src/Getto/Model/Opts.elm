@@ -10,13 +10,12 @@ import Getto.Rest as Rest
 
 import Json.Decode as Decode
 
-type alias Opts full limited =
+type alias Opts full =
   { version   : String
   , copyright : String
   , renew     : RenewRequest full
   , decoder :
     { full    : Decode.Decoder full
-    , limited : Decode.Decoder limited
     }
   }
 

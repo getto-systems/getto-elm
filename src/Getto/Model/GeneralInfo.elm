@@ -9,12 +9,12 @@ import Getto.Model.Page exposing ( Page )
 import Getto.Model.Project exposing ( Project )
 import Getto.Model.Credential exposing ( Credential )
 
-type alias GeneralInfo model full limited =
+type alias GeneralInfo model full =
   { model
   | application : Application
   , storage     : Storage
   , api         : Api
   , page        : Page
   , project     : Project
-  , credential  : Credential full limited
+  , credential  : Credential full
   }

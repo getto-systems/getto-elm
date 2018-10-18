@@ -39,10 +39,10 @@ token_      = Focus.create .token      (\f model -> { model | token      = model
 type Msg full
   = Done (Opts.RenewResult full)
 
-type alias AppInfo full limited = GeneralInfo {} full limited
-type alias Init full limited model = AppInfo full limited -> ( model, Cmd (Msg full) )
+type alias AppInfo full = GeneralInfo {} full
+type alias Init full model = AppInfo full -> ( model, Cmd (Msg full) )
 
-init : Credential.AuthMethod -> (Msg full -> msg) -> Init full limited model -> Opts full limited -> Flags -> ( model, Cmd msg )
+init : Credential.AuthMethod -> (Msg full -> msg) -> Init full model -> Opts full -> Flags -> ( model, Cmd msg )
 init authMethod msg func opts flags =
   { application =
     { version   = opts.version
@@ -66,7 +66,7 @@ init authMethod msg func opts flags =
   >> Moment.map msg
 
 
-initCredential : Opts full limited -> AppInfo full limited -> ( AppInfo full limited, Cmd (Msg full) )
+initCredential : Opts full -> AppInfo full -> ( AppInfo full, Cmd (Msg full) )
 initCredential opts model =
   case model.credential.authMethod of
     Credential.Public ->
@@ -91,11 +91,32 @@ initCredential opts model =
             Just _  -> [ Auth.previousPath >> Location.redirectTo ]
           )
 
+    Credential.ResetAuth config ->
+      case
+        model.page.search
+        |> Location.entry config.key
+        |> Maybe.andThen
+          (Decode.decodeString resetStorage >> Result.toMaybe)
+      of
+        Nothing ->
+          model |> Moment.batch
+            [ always (Auth.loginPath |> Location.redirectTo) ]
+
+        Just storage ->
+          { model | api = { token = storage.reset.token |> Just } }
+          |> Focus.update credential_
+            (\credential ->
+              { credential
+              | token = storage.reset |> Credential.ResetToken |> Just
+              }
+            )
+          |> Moment.nop
+
     Credential.LimitedAuth name config ->
       let
         storage =
           model.storage.global.credential
-          |> Decode.decodeValue (opts.decoder.limited |> limitedStorage name)
+          |> Decode.decodeValue (limitedStorage name)
           |> Result.toMaybe
       in
         case storage of
@@ -156,6 +177,25 @@ initCredential opts model =
                 )
 
 
+type alias ResetStorage =
+  { reset : Credential.Reset
+  }
+
+resetStorage : Decode.Decoder ResetStorage
+resetStorage =
+  Decode.succeed ResetStorage
+  |: (Decode.at ["reset"] reset)
+
+type alias Reset =
+  { token : String
+  }
+
+reset : Decode.Decoder Credential.Reset
+reset =
+  Decode.succeed Reset
+  |: Decode.string
+
+
 type alias FullStorage a =
   { full         : Credential.Full a
   , rememberMe   : Bool
@@ -192,29 +232,27 @@ fullInfo =
   |: (Decode.at ["issued_at"] Decode.string)
 
 
-type alias LimitedStorage a =
-  { limited      : Credential.Limited a
+type alias LimitedStorage =
+  { limited      : Credential.Limited
   , rememberMe   : Bool
   , previousPath : Maybe String
   }
 
-limitedStorage : String -> Decode.Decoder a -> Decode.Decoder (LimitedStorage a)
-limitedStorage name decoder =
+limitedStorage : String -> Decode.Decoder LimitedStorage
+limitedStorage name =
   Decode.succeed LimitedStorage
-  |: (Decode.at ["limited." ++ name] (limited decoder))
+  |: (Decode.at ["limited." ++ name]  limited)
   |: (Decode.at ["rememberMe"]        Decode.bool)
   |: (Decode.at ["previousPath"]     (Decode.maybe Decode.string))
 
-type alias Limited a =
-  { account : a
-  , info    : Credential.LimitedInfo
-  , token   : String
+type alias Limited =
+  { info  : Credential.LimitedInfo
+  , token : String
   }
 
-limited : Decode.Decoder a -> Decode.Decoder (Credential.Limited a)
-limited decoder =
+limited : Decode.Decoder Credential.Limited
+limited =
   Decode.succeed Limited
-  |: (AuthDecode.jwt decoder)
   |: (AuthDecode.jwt limitedInfo)
   |: Decode.string
 
@@ -237,7 +275,7 @@ limitedInfo =
     )
 
 
-update : Msg full -> GeneralInfo m full limited -> ( GeneralInfo m full limited, Cmd (Msg full) )
+update : Msg full -> GeneralInfo m full -> ( GeneralInfo m full, Cmd (Msg full) )
 update msg model =
   case msg of
     Done result ->
