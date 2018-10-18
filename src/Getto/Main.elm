@@ -6,50 +6,53 @@ module Getto.Main exposing
   , update
   , toggleMenu
   )
-import Getto
+import Getto.Model.Opts exposing ( Opts )
+import Getto.Model.Flags exposing ( Flags )
+import Getto.Model.GeneralInfo exposing ( GeneralInfo )
+import Getto.Model.Credential as Credential
+
 import Getto.App as App
+import Getto.Moment as Moment
 import Getto.Storage as Storage
 import Getto.Nav as Nav
 
-type alias Base info m =
+type alias Base m info full =
   { m
-  | info : Info info
+  | info : Info info full
   }
 
-type alias Info info = Getto.GeneralInfo
+type alias Info info full = GeneralInfo
   { info
   | menu : Nav.Menu
   }
+  full
 
-type alias MainInfo = Info {}
+type alias MainInfo full = Info {} full
 
-type Msg
-  = Nop
+type Msg full
+  = Super (App.Msg full)
   | ToggleMenu String
 
 
-init : Getto.Opts -> Getto.Flags -> (MainInfo -> ( model, Cmd msg )) -> ( model, Cmd msg )
-init opts flags func = App.init opts flags <|
-  \base ->
-    let
-      info =
-        { application = base.application
-        , storage     = base.storage
-        , api         = base.api
-        , page        = base.page
-        , project     = base.project
-        , credential  = base.credential
-        , menu        = flags.storage.global.menu |> Nav.decode
-        }
+type alias Init full model msg = MainInfo full -> ( model, Cmd msg )
 
-      (model,cmd) = info |> func
-    in
-      model ! [ cmd ]
+init : Credential.AuthMethod -> (Msg full -> msg) -> Init full model msg -> Opts full -> Flags -> ( model, Cmd msg )
+init authMethod msg func = App.init authMethod (Super >> msg) <|
+  \info ->
+    { application = info.application
+    , storage     = info.storage
+    , api         = info.api
+    , page        = info.page
+    , project     = info.project
+    , credential  = info.credential
+    , menu        = info.storage.global.menu |> Nav.decode
+    }
+    |> func
 
-update : Msg -> Base info m -> ( Base info m, Cmd Msg )
+update : Msg full -> Base m info full -> ( Base m info full, Cmd (Msg full) )
 update msg model =
   case msg of
-    Nop -> model ! []
+    Super msg -> model |> Moment.update App.info_ (App.update msg) |> Moment.map Super
 
     ToggleMenu name ->
       let
