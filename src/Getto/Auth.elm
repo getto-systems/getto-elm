@@ -54,9 +54,11 @@ login token =
         [ save
         , previousPath >> Location.redirectTo
         ]
-      Credential.LimitedToken _ ->
+      Credential.LimitedToken token ->
         [ save
-        , always (limitedVerifyPath |> Location.redirectTo)
+        , case token.info.status of
+          Credential.LimitedRegistered   -> always (limitedVerifyPath |> Location.redirectTo)
+          Credential.LimitedUnregistered -> always (limitedSetupPath  |> Location.redirectTo)
         ]
     )
 
