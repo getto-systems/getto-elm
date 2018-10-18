@@ -19,7 +19,8 @@ module Getto.Nav exposing
   , sortBadge
   )
 
-import Getto
+import Getto.Model.Page exposing ( Page )
+
 import Getto.Href as Href
 import Getto.Json as Json
 
@@ -108,7 +109,7 @@ encode menu = Encode.object <|
 withGroups : List Group -> Menu -> Menu
 withGroups groups menu = { menu | groups = groups }
 
-activate : Getto.Page -> Menu -> Menu
+activate : Page -> Menu -> Menu
 activate page menu =
   let
     activateGroup group =

@@ -40,9 +40,9 @@ type Msg full
   = Done (Opts.RenewResult full)
 
 type alias AppInfo full = GeneralInfo {} full
-type alias Init full model = AppInfo full -> ( model, Cmd (Msg full) )
+type alias Init full model msg = AppInfo full -> ( model, Cmd msg )
 
-init : Credential.AuthMethod -> (Msg full -> msg) -> Init full model -> Opts full -> Flags -> ( model, Cmd msg )
+init : Credential.AuthMethod -> (Msg full -> msg) -> Init full model msg -> Opts full -> Flags -> ( model, Cmd msg )
 init authMethod msg func opts flags =
   { application =
     { version   = opts.version
@@ -62,8 +62,8 @@ init authMethod msg func opts flags =
     }
   }
   |> initCredential opts
+  |> Moment.map msg
   |> Moment.andThen func
-  >> Moment.map msg
 
 
 initCredential : Opts full -> AppInfo full -> ( AppInfo full, Cmd (Msg full) )
@@ -95,19 +95,17 @@ initCredential opts model =
       case
         model.page.search
         |> Location.entry config.key
-        |> Maybe.andThen
-          (Decode.decodeString resetStorage >> Result.toMaybe)
       of
         Nothing ->
           model |> Moment.batch
             [ always (Auth.loginPath |> Location.redirectTo) ]
 
-        Just storage ->
-          { model | api = { token = storage.reset.token |> Just } }
+        Just token ->
+          { model | api = { token = token |> Just } }
           |> Focus.update credential_
             (\credential ->
               { credential
-              | token = storage.reset |> Credential.ResetToken |> Just
+              | token = { token = token } |> Credential.ResetToken |> Just
               }
             )
           |> Moment.nop
@@ -175,25 +173,6 @@ initCredential opts model =
                   then [ .api >> opts.renew >> Http.send Done ]
                   else []
                 )
-
-
-type alias ResetStorage =
-  { reset : Credential.Reset
-  }
-
-resetStorage : Decode.Decoder ResetStorage
-resetStorage =
-  Decode.succeed ResetStorage
-  |: (Decode.at ["reset"] reset)
-
-type alias Reset =
-  { token : String
-  }
-
-reset : Decode.Decoder Credential.Reset
-reset =
-  Decode.succeed Reset
-  |: Decode.string
 
 
 type alias FullStorage a =
