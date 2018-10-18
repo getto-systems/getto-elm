@@ -1,5 +1,6 @@
 module Getto.Rest exposing
   ( State(..)
+  , Headers
   , JsonBody
   , MultipartBody
   , Request
@@ -34,6 +35,8 @@ type State
   = Connecting
   | Err Http.Error
 
+type alias Headers = Api -> List (Http.Header)
+
 type alias JsonBody = List ( String, Encode.Value )
 type alias MultipartBody = List ( String, Part.Part )
 
@@ -43,9 +46,9 @@ type alias RestResult a = Result Http.Error a
 isConnecting : Maybe State -> Bool
 isConnecting = (==) (Just Connecting)
 
-get : Decode.Decoder a -> List ( String, Location.Search ) -> String -> Api -> Http.Request a
-get decoder data path api =
-  request (always Http.emptyBody) "GET" decoder () (path |> Href.url (data |> search)) api
+get : Headers -> Decode.Decoder a -> List ( String, Location.Search ) -> String -> Api -> Http.Request a
+get headers decoder data path api =
+  request (always Http.emptyBody) "GET" headers decoder () (path |> Href.url (data |> search)) api
 
 create = request jsonBody "POST"
 update = request jsonBody "PUT"
@@ -53,21 +56,16 @@ delete = request jsonBody "DELETE"
 
 upload = request multipartBody "POST"
 
-request : (data -> Http.Body) -> String -> Decode.Decoder a -> data -> String -> Api -> Http.Request a
-request toBody method decoder data path api = Http.request <|
-  let
-    toHeaders =
-      Maybe.map (\token -> [ Http.header "Authorization" <| "Bearer " ++ token ])
-      >> Maybe.withDefault []
-  in
-    { method = method
-    , headers = api.token |> toHeaders
-    , url = url path
-    , body = data |> toBody
-    , expect = Http.expectJson decoder
-    , timeout = Nothing -- TODO タイムアウトを設定するべき
-    , withCredentials = False
-    }
+request : (data -> Http.Body) -> String -> Headers -> Decode.Decoder a -> data -> String -> Api -> Http.Request a
+request toBody method headers decoder data path api = Http.request <|
+  { method = method
+  , headers = api |> headers
+  , url = url path
+  , body = data |> toBody
+  , expect = Http.expectJson decoder
+  , timeout = Nothing -- TODO タイムアウトを設定するべき
+  , withCredentials = False
+  }
 
 done : RestResult a -> Maybe State
 done result =
