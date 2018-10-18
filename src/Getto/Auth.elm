@@ -68,17 +68,17 @@ save = .credential >> encode >> Storage.saveCredential
 
 encode : Credential full limited -> Encode.Value
 encode credential = Encode.object
-  [ (credential.authMethod |> key, credential.token        |> defaultNull encodeToken)
-  , ("rememberMe",                 credential.rememberMe   |> Encode.bool)
-  , ("previousPath",               credential.previousPath |> defaultNull Encode.string)
+  [ (credential.token |> key, credential.token        |> defaultNull encodeToken)
+  , ("rememberMe",            credential.rememberMe   |> Encode.bool)
+  , ("previousPath",          credential.previousPath |> defaultNull Encode.string)
   ]
 
-key : Credential.AuthMethod -> String
-key authMethod =
-  case authMethod of
-    Credential.Public             -> "full"
-    Credential.FullAuth _         -> "full"
-    Credential.LimitedAuth name _ -> "limited." ++ name
+key : Maybe (Credential.Token full limited) -> String
+key token =
+  case token of
+    Just (Credential.FullToken         info) -> "full"
+    Just (Credential.LimitedToken name info) -> "limited." ++ name
+    _ -> "no-token"
 
 encodeToken : Credential.Token full limited -> Encode.Value
 encodeToken token =
