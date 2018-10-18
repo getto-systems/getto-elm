@@ -189,7 +189,7 @@ type alias FullInfo =
 fullInfo : Decode.Decoder FullInfo
 fullInfo =
   Decode.succeed FullInfo
-  |: (Decode.at ["iat"] Decode.string)
+  |: (Decode.at ["issued_at"] Decode.string)
 
 
 type alias LimitedStorage a =
