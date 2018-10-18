@@ -50,7 +50,8 @@ module Getto.Form.Edit exposing
   , options
   )
 
-import Getto
+import Getto.Model.Api exposing ( Api )
+
 import Getto.I18n as I18n
 import Getto.Rest as Rest
 import Getto.Moment as Moment
@@ -71,7 +72,7 @@ import FileReader
 
 type alias Model a = Field.Model
   { a
-  | api : Getto.Api
+  | api : Api
   , update : Maybe Rest.State
   }
 
