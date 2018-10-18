@@ -2,9 +2,13 @@ module Getto.Model.Credential exposing
   ( Credential
   , AuthMethod(..)
   , FullConfig
+  , LimitedConfig
+  , LimitedStatus(..)
   , Token(..)
   , Full
+  , FullInfo
   , Limited
+  , LimitedInfo
   )
 
 type alias Credential full limited =
@@ -17,11 +21,21 @@ type alias Credential full limited =
 type AuthMethod
   = Public
   | FullAuth FullConfig
-  | LimitedAuth String
+  | LimitedAuth LimitedConfig
 
 type alias FullConfig =
   { expireHours : Int
   }
+
+type alias LimitedConfig =
+  { name : String
+  , status : LimitedStatus
+  }
+
+type LimitedStatus
+  = LimitedRegistered
+  | LimitedUnregistered
+
 
 type Token full limited
   = NoToken
@@ -29,12 +43,21 @@ type Token full limited
   | LimitedToken (Limited limited)
 
 type alias Full a =
-  { account   : a
-  , token     : String
-  , issued_at : String
+  { account : a
+  , info    : FullInfo
+  , token   : String
+  }
+
+type alias FullInfo =
+  { issued_at : String
   }
 
 type alias Limited a =
   { account : a
+  , info    : LimitedInfo
   , token   : String
+  }
+
+type alias LimitedInfo =
+  { status : LimitedStatus
   }

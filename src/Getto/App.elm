@@ -2,6 +2,8 @@ module Getto.App exposing
   ( Msg
   , init
   , update
+  , fullInfo
+  , limitedInfo
   , info_
   )
 
@@ -84,36 +86,38 @@ initCredential opts model =
             }
           )
         |> Moment.batch
-          (case storage |> Maybe.map .info of
+          (case storage of
             Nothing -> []
             Just _  -> [ Auth.previousPath >> Location.redirectTo ]
           )
 
-    Credential.LimitedAuth authType ->
+    Credential.LimitedAuth config ->
       let
         storage =
           model.storage.global.credential
-          |> Decode.decodeValue (opts.decoder.limited |> limitedStorage authType)
+          |> Decode.decodeValue (opts.decoder.limited |> limitedStorage config.name)
           |> Result.toMaybe
       in
-        { model
-        | api =
-          { token = storage |> Maybe.map .info |> Maybe.map .token
-          }
-        }
-        |> Focus.update credential_
-          (case storage of
-            Nothing -> identity
-            Just storage ->
+        case storage of
+          Nothing -> model |> Moment.batch [ always (Auth.loginPath |> Location.redirectTo) ]
+          Just storage ->
+            { model | api = { token = storage.limited.token |> Just } }
+            |> Focus.update credential_
               (\credential ->
                 { credential
-                | token        = storage.info |> Credential.LimitedToken |> Just
+                | token        = storage.limited |> Credential.LimitedToken |> Just
                 , rememberMe   = storage.rememberMe
                 , previousPath = storage.previousPath
                 }
               )
-          )
-        |> Moment.nop
+            |> Moment.batch
+              (case (config.status, storage.limited.info.status) of
+                (Credential.LimitedRegistered, Credential.LimitedUnregistered) ->
+                  [ always (Auth.limitedSetupPath |> Location.redirectTo) ]
+                (Credential.LimitedUnregistered, Credential.LimitedRegistered) ->
+                  [ always (Auth.limitedVerifyPath |> Location.redirectTo) ]
+                _ -> []
+              )
 
     Credential.FullAuth config ->
       let
@@ -121,46 +125,39 @@ initCredential opts model =
           model.storage.global.credential
           |> Decode.decodeValue (opts.decoder.full |> fullStorage)
           |> Result.toMaybe
-
-        renewRequired =
-          case storage |> Maybe.map .info of
-            Nothing -> False
-            Just token ->
-              case
-                ( model.page.loadAt |> Date.Extra.fromIsoString
-                , token.issued_at   |> Date.Extra.fromIsoString
-                )
-              of
-                (Just loadAt, Just issued_at) ->
-                  Date.Extra.diff Date.Extra.Hour issued_at loadAt > config.expireHours
-                _ -> True
       in
-        { model
-        | api =
-          { token = storage |> Maybe.map .info |> Maybe.map .token
-          }
-        }
-        |> Focus.update credential_
-          (case storage of
-            Nothing -> identity
-            Just storage ->
-              (\credential ->
-                { credential
-                | token        = storage.info |> Credential.FullToken |> Just
-                , rememberMe   = storage.rememberMe
-                , previousPath = model.page.query |> Just
-                }
-              )
-          )
-        |> Moment.batch
-          (if renewRequired
-            then [ .api >> opts.renew >> Http.send Done ]
-            else []
-          )
+        case storage of
+          Nothing -> model |> Moment.batch [ always (Auth.loginPath |> Location.redirectTo) ]
+          Just storage ->
+            let
+              renewRequired =
+                case
+                  ( model.page.loadAt |> Date.Extra.fromIsoString
+                  , storage.full.info.issued_at |> Date.Extra.fromIsoString
+                  )
+                of
+                  (Just loadAt, Just issued_at) ->
+                    Date.Extra.diff Date.Extra.Hour issued_at loadAt > config.expireHours
+                  _ -> True
+            in
+              { model | api = { token = storage.full.token |> Just } }
+              |> Focus.update credential_
+                (\credential ->
+                  { credential
+                  | token        = storage.full |> Credential.FullToken |> Just
+                  , rememberMe   = storage.rememberMe
+                  , previousPath = model.page.query |> Just
+                  }
+                )
+              |> Moment.batch
+                (if renewRequired
+                  then [ .api >> opts.renew >> Http.send Done ]
+                  else []
+                )
 
 
 type alias FullStorage a =
-  { info         : Credential.Full a
+  { full         : Credential.Full a
   , rememberMe   : Bool
   , previousPath : Maybe String
   }
@@ -173,42 +170,71 @@ fullStorage decoder =
   |: (Decode.at ["previousPath"] (Decode.maybe Decode.string))
 
 type alias Full a =
-  { account   : a
-  , token     : String
-  , issued_at : String
+  { account : a
+  , info    : Credential.FullInfo
+  , token   : String
   }
 
 full : Decode.Decoder a -> Decode.Decoder (Credential.Full a)
 full decoder =
   Decode.succeed Full
-  |: (Decode.at ["token"]    (AuthDecode.jwt decoder))
-  |: (Decode.at ["token"]     Decode.string)
-  |: (Decode.at ["issued_at"] Decode.string)
+  |: (AuthDecode.jwt decoder)
+  |: (AuthDecode.jwt fullInfo)
+  |: Decode.string
+
+type alias FullInfo =
+  { issued_at : String
+  }
+
+fullInfo : Decode.Decoder FullInfo
+fullInfo =
+  Decode.succeed FullInfo
+  |: (Decode.at ["iat"] Decode.string)
 
 
 type alias LimitedStorage a =
-  { info         : Credential.Limited a
+  { limited      : Credential.Limited a
   , rememberMe   : Bool
   , previousPath : Maybe String
   }
 
 limitedStorage : String -> Decode.Decoder a -> Decode.Decoder (LimitedStorage a)
-limitedStorage authType decoder =
+limitedStorage name decoder =
   Decode.succeed LimitedStorage
-  |: (Decode.at ["limited." ++ authType] (limited decoder))
-  |: (Decode.at ["rememberMe"]            Decode.bool)
-  |: (Decode.at ["previousPath"]         (Decode.maybe Decode.string))
+  |: (Decode.at ["limited." ++ name] (limited decoder))
+  |: (Decode.at ["rememberMe"]        Decode.bool)
+  |: (Decode.at ["previousPath"]     (Decode.maybe Decode.string))
 
 type alias Limited a =
   { account : a
+  , info    : Credential.LimitedInfo
   , token   : String
   }
 
 limited : Decode.Decoder a -> Decode.Decoder (Credential.Limited a)
 limited decoder =
   Decode.succeed Limited
-  |: (Decode.at ["token"] (AuthDecode.jwt decoder))
-  |: (Decode.at ["token"]  Decode.string)
+  |: (AuthDecode.jwt decoder)
+  |: (AuthDecode.jwt limitedInfo)
+  |: Decode.string
+
+type alias LimitedInfo =
+  { status : String
+  }
+
+limitedInfo : Decode.Decoder Credential.LimitedInfo
+limitedInfo =
+  Decode.succeed LimitedInfo
+  |: (Decode.at ["aud"] Decode.string)
+  |> Decode.andThen
+    (\info ->
+      Decode.succeed
+        { status =
+          if info.status == "registered"
+            then Credential.LimitedRegistered
+            else Credential.LimitedUnregistered
+        }
+    )
 
 
 update : Msg full -> GeneralInfo m full limited -> ( GeneralInfo m full limited, Cmd (Msg full) )

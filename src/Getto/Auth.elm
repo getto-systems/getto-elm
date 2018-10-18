@@ -4,6 +4,8 @@ module Getto.Auth exposing
   , login
   , rememberMe
   , loginPath
+  , limitedVerifyPath
+  , limitedSetupPath
   , previousPath
   )
 
@@ -54,7 +56,7 @@ login token =
         ]
       Credential.LimitedToken _ ->
         [ save
-        , always (verifyPath |> Location.redirectTo)
+        , always (limitedVerifyPath |> Location.redirectTo)
         ]
     )
 
@@ -72,9 +74,9 @@ encode credential = Encode.object
 key : Credential.AuthMethod -> String
 key authMethod =
   case authMethod of
-    Credential.Public           -> "full"
-    Credential.FullAuth _       -> "full"
-    Credential.LimitedAuth name -> "limited." ++ name
+    Credential.Public             -> "full"
+    Credential.FullAuth _         -> "full"
+    Credential.LimitedAuth config -> "limited." ++ config.name
 
 encodeToken : Credential.Token full limited -> Encode.Value
 encodeToken token =
@@ -93,8 +95,11 @@ rememberMe = Focus.set (credential_ => rememberMe_)
 loginPath : String
 loginPath = Env.pageRoot ++ Config.loginPath
 
-verifyPath : String
-verifyPath = Env.pageRoot ++ Config.verifyPath
+limitedVerifyPath : String
+limitedVerifyPath = Env.pageRoot ++ Config.limitedVerifyPath
+
+limitedSetupPath : String
+limitedSetupPath = Env.pageRoot ++ Config.limitedSetupPath
 
 previousPath : GeneralInfo m full limited -> String
 previousPath = .credential >> .previousPath >> Maybe.withDefault Env.pageRoot
