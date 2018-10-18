@@ -91,11 +91,11 @@ initCredential opts model =
             Just _  -> [ Auth.previousPath >> Location.redirectTo ]
           )
 
-    Credential.LimitedAuth config ->
+    Credential.LimitedAuth name config ->
       let
         storage =
           model.storage.global.credential
-          |> Decode.decodeValue (opts.decoder.limited |> limitedStorage config.name)
+          |> Decode.decodeValue (opts.decoder.limited |> limitedStorage name)
           |> Result.toMaybe
       in
         case storage of
@@ -105,7 +105,7 @@ initCredential opts model =
             |> Focus.update credential_
               (\credential ->
                 { credential
-                | token        = storage.limited |> Credential.LimitedToken |> Just
+                | token        = storage.limited |> Credential.LimitedToken name |> Just
                 , rememberMe   = storage.rememberMe
                 , previousPath = storage.previousPath
                 }
@@ -113,9 +113,9 @@ initCredential opts model =
             |> Moment.batch
               (case (config.status, storage.limited.info.status) of
                 (Credential.LimitedRegistered, Credential.LimitedUnregistered) ->
-                  [ always (Auth.limitedSetupPath |> Location.redirectTo) ]
+                  [ always (name |> Auth.limitedSetupPath |> Location.redirectTo) ]
                 (Credential.LimitedUnregistered, Credential.LimitedRegistered) ->
-                  [ always (Auth.limitedVerifyPath |> Location.redirectTo) ]
+                  [ always (name |> Auth.limitedVerifyPath |> Location.redirectTo) ]
                 _ -> []
               )
 

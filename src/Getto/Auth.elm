@@ -54,11 +54,11 @@ login token =
         [ save
         , previousPath >> Location.redirectTo
         ]
-      Credential.LimitedToken token ->
+      Credential.LimitedToken name token ->
         [ save
         , case token.info.status of
-          Credential.LimitedRegistered   -> always (limitedVerifyPath |> Location.redirectTo)
-          Credential.LimitedUnregistered -> always (limitedSetupPath  |> Location.redirectTo)
+          Credential.LimitedRegistered   -> always (name |> limitedVerifyPath |> Location.redirectTo)
+          Credential.LimitedUnregistered -> always (name |> limitedSetupPath  |> Location.redirectTo)
         ]
     )
 
@@ -78,14 +78,14 @@ key authMethod =
   case authMethod of
     Credential.Public             -> "full"
     Credential.FullAuth _         -> "full"
-    Credential.LimitedAuth config -> "limited." ++ config.name
+    Credential.LimitedAuth name _ -> "limited." ++ name
 
 encodeToken : Credential.Token full limited -> Encode.Value
 encodeToken token =
   case token of
-    Credential.NoToken           -> Encode.null
-    Credential.FullToken    info -> info.token |> Encode.string
-    Credential.LimitedToken info -> info.token |> Encode.string
+    Credential.NoToken                -> Encode.null
+    Credential.FullToken         info -> info.token |> Encode.string
+    Credential.LimitedToken name info -> info.token |> Encode.string
 
 defaultNull f = Maybe.map f >> Maybe.withDefault Encode.null
 
@@ -97,11 +97,13 @@ rememberMe = Focus.set (credential_ => rememberMe_)
 loginPath : String
 loginPath = Env.pageRoot ++ Config.loginPath
 
-limitedVerifyPath : String
-limitedVerifyPath = Env.pageRoot ++ Config.limitedVerifyPath
+limitedVerifyPath : String -> String
+limitedVerifyPath name =
+  Env.pageRoot ++ (name |> Config.limitedVerifyPath)
 
-limitedSetupPath : String
-limitedSetupPath = Env.pageRoot ++ Config.limitedSetupPath
+limitedSetupPath : String -> String
+limitedSetupPath name =
+  Env.pageRoot ++ (name |> Config.limitedSetupPath)
 
 previousPath : GeneralInfo m full limited -> String
-previousPath = .credential >> .previousPath >> Maybe.withDefault Env.pageRoot
+previousPath = .credential >> .previousPath >> Maybe.withDefault (Env.pageRoot ++ Config.topPath)

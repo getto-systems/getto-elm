@@ -21,15 +21,14 @@ type alias Credential full limited =
 type AuthMethod
   = Public
   | FullAuth FullConfig
-  | LimitedAuth LimitedConfig
+  | LimitedAuth String LimitedConfig
 
 type alias FullConfig =
   { expireHours : Int
   }
 
 type alias LimitedConfig =
-  { name : String
-  , status : LimitedStatus
+  { status : LimitedStatus
   }
 
 type LimitedStatus
@@ -39,8 +38,8 @@ type LimitedStatus
 
 type Token full limited
   = NoToken
-  | FullToken    (Full full)
-  | LimitedToken (Limited limited)
+  | FullToken (Full full)
+  | LimitedToken String (Limited limited)
 
 type alias Full a =
   { account : a
