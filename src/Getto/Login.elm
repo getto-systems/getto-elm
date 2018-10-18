@@ -1,9 +1,10 @@
 module Getto.Login exposing
   ( Base
   )
-import Getto
 
-type alias Base m =
+import Getto.Model.GeneralInfo exposing ( GeneralInfo )
+
+type alias Base m info full limited =
   { m
-  | info : Getto.Info
+  | info : GeneralInfo info full limited
   }

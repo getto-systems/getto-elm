@@ -1,209 +1,100 @@
 module Getto.Auth exposing
-  ( Token
-  , token
-  , init
+  ( clear
   , logout
-  , authenticated
+  , login
+  , rememberMe
+  , loginPath
+  , previousPath
   )
-import Getto
+
+import Getto.Model.GeneralInfo exposing ( GeneralInfo )
+import Getto.Model.Credential as Credential exposing ( Credential )
+
 import Getto.Storage as Storage
 import Getto.Location as Location
 import Getto.Config as Config
 import Getto.Env as Env
 import Getto.Moment as Moment
-import Getto.Json as Json
 
-import Result
 import Json.Encode as Encode
-import Json.Decode as Decode
-import Json.Decode.Extra exposing ((|:))
-import Date.Extra
-import Base64
 
-type alias Token =
-  { token : String
-  , info : Info
-  }
+import Focus exposing ( (=>) )
 
-type alias Info =
-  { id : Int
-  , role : List String
-  , login_id : String
-  , renewedAt : String
-  }
 
-token : Decode.Decoder Token
-token =
-  Decode.succeed Token
-  |: (Decode.at ["jwt"] Decode.string)
-  |: (Decode.at ["jwt"] jwt)
+credential_   = Focus.create .credential   (\f model -> { model | credential   = model.credential   |> f })
+token_        = Focus.create .token        (\f model -> { model | token        = model.token        |> f })
+previousPath_ = Focus.create .previousPath (\f model -> { model | previousPath = model.previousPath |> f })
+rememberMe_   = Focus.create .rememberMe   (\f model -> { model | rememberMe   = model.rememberMe   |> f })
 
-jwt : Decode.Decoder Info
-jwt =
-  Decode.string
-  |> Decode.andThen
-    (\jwt ->
-      let
-        padding token =
-          let
-            length = token |> String.length
-            fullLength = length + ((4 - (length % 4)) % 4)
-          in
-            token |> String.padRight fullLength '='
 
-        token =
-          case jwt |> String.split "." of
-            _ :: payload :: _ ->
-              payload
-              |> padding
-              |> Base64.decode
-              |> Result.mapError toString
-              |> Result.mapError ((++) ("base64 error [" ++ payload ++ "]: "))
-              |> Result.andThen (Decode.decodeString info)
-            _ ->
-              Err ("jwt mismatch " ++ (jwt |> String.split "." |> String.join(" ")))
-      in
-        case token of
-          Ok val      -> Decode.succeed val
-          Err message -> Decode.fail message
+clear : GeneralInfo m full limited -> GeneralInfo m full limited
+clear model =
+  { model | api = { token = Nothing } }
+  |> Focus.set (credential_ => token_) Nothing
+
+logout : GeneralInfo m full limited -> ( GeneralInfo m full limited, Cmd msg )
+logout =
+  clear
+  >> Focus.set (credential_ => previousPath_) Nothing
+  >> Moment.batch
+    [ save
+    , always (loginPath |> Location.redirectTo)
+    ]
+
+
+login : Credential.Token full limited -> GeneralInfo m full limited -> ( GeneralInfo m full limited, Cmd msg )
+login token =
+  Focus.set (credential_ => token_) (Just token)
+  >> Moment.batch
+    (case token of
+      Credential.NoToken -> []
+      Credential.FullToken _ ->
+        [ save
+        , previousPath >> Location.redirectTo
+        ]
+      Credential.LimitedToken _ ->
+        [ save
+        , always (verifyPath |> Location.redirectTo)
+        ]
     )
 
-info : Decode.Decoder Info
-info =
-  Decode.succeed Info
-  |: (Decode.at ["sub"] Decode.int)
-  |: (Decode.at ["aud"] (Decode.list Decode.string))
-  |: (Decode.at ["login_id"] Decode.string)
-  |: (Decode.at ["renewedAt"] Decode.string)
 
+save : GeneralInfo m full limited -> Cmd msg
+save = .credential >> encode >> Storage.saveCredential
 
-init : Getto.Opts -> Getto.Flags -> ( Getto.Credential, Cmd msg )
-init opts flags =
-  let
-    expireHours = 20
-
-    default = Maybe.withDefault
-
-    storage = flags.storage.global.credential
-    credential =
-      { login_id   = storage |> Json.decodeValue ["login_id"]   Decode.string              |> default ""
-      , rememberMe = storage |> Json.decodeValue ["rememberMe"] Decode.bool                |> default True
-      , role       = storage |> Json.decodeValue ["role"]      (Decode.list Decode.string) |> default []
-      , token      = storage |> Json.decodeValue ["token"]      Decode.string
-      , oldToken   = storage |> Json.decodeValue ["oldToken"]   Decode.string
-      , previous   = storage |> Json.decodeValue ["previous"]   Decode.string
-      , renewedAt  = storage |> Json.decodeValue ["renewedAt"]  Decode.string
-      , authRequired = opts.authRequired
-      }
-
-    renewRequired =
-      case credential.token of
-        Nothing -> False
-        Just _ ->
-          case
-            ( flags.page.loadAt                  |> Date.Extra.fromIsoString
-            , credential.renewedAt |> default "" |> Date.Extra.fromIsoString
-            )
-          of
-            (Just loadAt, Just renewedAt) ->
-              Date.Extra.diff Date.Extra.Hour renewedAt loadAt > expireHours
-            _ -> True
-
-    token =
-      if renewRequired
-        then Nothing
-        else credential.token
-
-    oldToken =
-      if renewRequired && credential.rememberMe
-        then credential.token
-        else credential.oldToken
-
-    previous =
-      if credential.authRequired
-        then Just flags.page.query
-        else credential.previous
-  in
-    { credential
-    | token = token
-    , oldToken = oldToken
-    , previous = previous
-    } |> Moment.batch
-      (case (opts.authRequired, token) of
-        (False, Just _) ->
-          [ previousPath >> Location.redirectTo
-          ]
-
-        (True, Nothing) ->
-          [ save
-          , loginPath >> Location.redirectTo
-          ]
-
-        _ -> []
-      )
-
-
-logout : Getto.Credential -> ( Getto.Credential, Cmd msg )
-logout =
-  clear >> resetPrevious >> Moment.batch
-    [ save
-    , loginPath >> Location.redirectTo
-    ]
-
-authenticated : Result error Token -> Getto.Credential -> ( Getto.Credential, Cmd msg )
-authenticated result credential =
-  (case result of
-    Err _ -> credential |> clear
-    Ok auth ->
-      { credential
-      | role = auth.info.role
-      , login_id = auth.info.login_id
-      , token = Just auth.token
-      , oldToken = Nothing
-      , renewedAt = Just auth.info.renewedAt
-      }
-  ) |> Moment.batch
-    [ save
-    , case result of
-      Ok _  -> previousPath >> Location.redirectTo
-      Err _ -> always Cmd.none
-    ]
-
-clear : Getto.Credential -> Getto.Credential
-clear credential =
-  { credential
-  | role = []
-  , login_id = ""
-  , token = Nothing
-  , oldToken = Nothing
-  , renewedAt = Nothing
-  }
-
-resetPrevious : Getto.Credential -> Getto.Credential
-resetPrevious credential = { credential | previous = Nothing }
-
-
-save : Getto.Credential -> Cmd msg
-save = encode >> Storage.saveCredential
-
-encode : Getto.Credential -> Encode.Value
+encode : Credential full limited -> Encode.Value
 encode credential = Encode.object
-  [ ("login_id",   credential.login_id   |> Encode.string)
-  , ("rememberMe", credential.rememberMe |> Encode.bool)
-  , ("role",       credential.role       |> List.map Encode.string |> Encode.list)
-  , ("token",      credential.token      |> Maybe.map Encode.string |> Maybe.withDefault Encode.null)
-  , ("oldToken",   credential.oldToken   |> Maybe.map Encode.string |> Maybe.withDefault Encode.null)
-  , ("previous",   credential.previous   |> Maybe.map Encode.string |> Maybe.withDefault Encode.null)
-  , ("renewedAt",  credential.renewedAt  |> Maybe.map Encode.string |> Maybe.withDefault Encode.null)
+  [ (credential.authMethod |> key, credential.token        |> defaultNull encodeToken)
+  , ("rememberMe",                 credential.rememberMe   |> Encode.bool)
+  , ("previousPath",               credential.previousPath |> defaultNull Encode.string)
   ]
 
+key : Credential.AuthMethod -> String
+key authMethod =
+  case authMethod of
+    Credential.Public           -> "full"
+    Credential.FullAuth _       -> "full"
+    Credential.LimitedAuth name -> "limited." ++ name
 
-loginPath : Getto.Credential -> String
-loginPath credential =
-  String.append Env.pageRoot <|
-    if credential.oldToken == Nothing
-      then Config.loginPath
-      else Config.renewPath
+encodeToken : Credential.Token full limited -> Encode.Value
+encodeToken token =
+  case token of
+    Credential.NoToken           -> Encode.null
+    Credential.FullToken    info -> info.token |> Encode.string
+    Credential.LimitedToken info -> info.token |> Encode.string
 
-previousPath : Getto.Credential -> String
-previousPath = .previous >> Maybe.withDefault Env.pageRoot
+defaultNull f = Maybe.map f >> Maybe.withDefault Encode.null
+
+
+rememberMe : Bool -> GeneralInfo m full limited -> GeneralInfo m full limited
+rememberMe = Focus.set (credential_ => rememberMe_)
+
+
+loginPath : String
+loginPath = Env.pageRoot ++ Config.loginPath
+
+verifyPath : String
+verifyPath = Env.pageRoot ++ Config.verifyPath
+
+previousPath : GeneralInfo m full limited -> String
+previousPath = .credential >> .previousPath >> Maybe.withDefault Env.pageRoot

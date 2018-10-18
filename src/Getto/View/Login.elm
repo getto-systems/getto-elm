@@ -1,12 +1,15 @@
 module Getto.View.Login exposing ( view )
-import Getto
+
+import Getto.Model.Application exposing ( Application )
+import Getto.Model.Project exposing ( Project )
+
 import Getto.Login as Login
 import Getto.View.Fa as Fa
 
 import Html as H exposing ( Html )
 import Html.Attributes as A
 
-view : (Login.Base m -> List (Html msg)) -> Login.Base m -> Html msg
+view : (Login.Base m info full limited -> List (Html msg)) -> Login.Base m info full limited -> Html msg
 view content model =
   H.div [ A.class "LoginLayout" ]
     [ H.article [] <| List.concat
@@ -17,7 +20,7 @@ view content model =
     , model.info.application |> footer
     ]
 
-header : Getto.Project -> Html msg
+header : Project -> Html msg
 header project =
   H.header []
     [ H.p []
@@ -29,7 +32,7 @@ header project =
       ]
     ]
 
-footer : Getto.Application -> Html msg
+footer : Application -> Html msg
 footer application =
   H.footer []
     [ Fa.copyright, H.text application.copyright

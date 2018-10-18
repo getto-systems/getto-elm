@@ -6,12 +6,10 @@ module Getto.Rest exposing
   , RestResult
   , isConnecting
   , get
-  , fetch
   , create
   , update
   , delete
   , upload
-  , download
   , done
   , without
   , error
@@ -21,7 +19,8 @@ module Getto.Rest exposing
   , key
   )
 
-import Getto
+import Getto.Model.Api exposing ( Api )
+
 import Getto.Env as Env
 import Getto.Location as Location
 import Getto.Href as Href
@@ -38,29 +37,23 @@ type State
 type alias JsonBody = List ( String, Encode.Value )
 type alias MultipartBody = List ( String, Part.Part )
 
-type alias Request a = Getto.Api -> Http.Request a
+type alias Request a = Api -> Http.Request a
 type alias RestResult a = Result Http.Error a
 
 isConnecting : Maybe State -> Bool
 isConnecting = (==) (Just Connecting)
 
-get : Decode.Decoder a -> List ( String, Location.Search ) -> String -> Getto.Api -> Http.Request a
+get : Decode.Decoder a -> List ( String, Location.Search ) -> String -> Api -> Http.Request a
 get decoder data path api =
   request (always Http.emptyBody) "GET" decoder () (path |> Href.url (data |> search)) api
 
-{--
- -- fetch が GET ではなく PUT なのは意図したもの
- -- GET は HTTP の仕様により、パラメータの指定方法が異なる
- -- どのリクエストも同じ方法で行いたいため、fetch は PUT で送信する
- --}
-fetch  = request jsonBody "PUT"
 create = request jsonBody "POST"
 update = request jsonBody "PUT"
 delete = request jsonBody "DELETE"
 
 upload = request multipartBody "POST"
 
-request : (data -> Http.Body) -> String -> Decode.Decoder a -> data -> String -> Getto.Api -> Http.Request a
+request : (data -> Http.Body) -> String -> Decode.Decoder a -> data -> String -> Api -> Http.Request a
 request toBody method decoder data path api = Http.request <|
   let
     toHeaders =
@@ -75,16 +68,6 @@ request toBody method decoder data path api = Http.request <|
     , timeout = Nothing -- TODO タイムアウトを設定するべき
     , withCredentials = False
     }
-
-download : List ( String, Location.Search ) -> String -> Getto.Api -> String
-download data path api =
-  let
-    toSearch =
-      Maybe.map (\token -> [("token", token)])
-      >> Maybe.withDefault []
-  in
-    path |> Href.url
-      (data |> search |> List.append (api.token |> toSearch))
 
 done : RestResult a -> Maybe State
 done result =
