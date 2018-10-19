@@ -10,14 +10,14 @@ import Getto.Rest as Rest
 
 import Json.Decode as Decode
 
-type alias Opts full =
+type alias Opts account =
   { version   : String
   , copyright : String
-  , renew     : RenewRequest full
+  , renew     : RenewRequest account
   , decoder :
-    { full    : Decode.Decoder full
+    { account : Decode.Decoder account
     }
   }
 
-type alias RenewRequest full = Rest.Request    (Credential.Full full)
-type alias RenewResult  full = Rest.RestResult (Credential.Full full)
+type alias RenewRequest account = Rest.Request    (Credential.Full account)
+type alias RenewResult  account = Rest.RestResult (Credential.Full account)

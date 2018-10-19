@@ -4,7 +4,7 @@ module Getto.Login exposing
 
 import Getto.Model.GeneralInfo exposing ( GeneralInfo )
 
-type alias Base m info full =
+type alias Base m info account =
   { m
-  | info : GeneralInfo info full
+  | info : GeneralInfo info account
   }

@@ -16,27 +16,27 @@ import Getto.Moment as Moment
 import Getto.Storage as Storage
 import Getto.Nav as Nav
 
-type alias Base m info full =
+type alias Base m info account =
   { m
-  | info : Info info full
+  | info : Info info account
   }
 
-type alias Info info full = GeneralInfo
+type alias Info info account = GeneralInfo
   { info
   | menu : Nav.Menu
   }
-  full
+  account
 
-type alias MainInfo full = Info {} full
+type alias MainInfo account = Info {} account
 
-type Msg full
-  = Super (App.Msg full)
+type Msg account
+  = Super (App.Msg account)
   | ToggleMenu String
 
 
-type alias Init full model msg = MainInfo full -> ( model, Cmd msg )
+type alias Init account model msg = MainInfo account -> ( model, Cmd msg )
 
-init : Credential.AuthMethod -> (Msg full -> msg) -> Init full model msg -> Opts full -> Flags -> ( model, Cmd msg )
+init : Credential.AuthMethod -> (Msg account -> msg) -> Init account model msg -> Opts account -> Flags -> ( model, Cmd msg )
 init authMethod msg func = App.init authMethod (Super >> msg) <|
   \info ->
     { application = info.application
@@ -45,11 +45,12 @@ init authMethod msg func = App.init authMethod (Super >> msg) <|
     , page        = info.page
     , project     = info.project
     , credential  = info.credential
+    , account     = info.account
     , menu        = info.storage.global.menu |> Nav.decode
     }
     |> func
 
-update : Msg full -> Base m info full -> ( Base m info full, Cmd (Msg full) )
+update : Msg account -> Base m info account -> ( Base m info account, Cmd (Msg account) )
 update msg model =
   case msg of
     Super msg -> model |> Moment.update App.info_ (App.update msg) |> Moment.map Super

@@ -29,12 +29,12 @@ previousPath_ = Focus.create .previousPath (\f model -> { model | previousPath =
 rememberMe_   = Focus.create .rememberMe   (\f model -> { model | rememberMe   = model.rememberMe   |> f })
 
 
-clear : GeneralInfo m full -> GeneralInfo m full
+clear : GeneralInfo m account -> GeneralInfo m account
 clear model =
   { model | api = { token = Nothing } }
   |> Focus.set (credential_ => token_) Nothing
 
-logout : GeneralInfo m full -> ( GeneralInfo m full, Cmd msg )
+logout : GeneralInfo m account -> ( GeneralInfo m account, Cmd msg )
 logout =
   clear
   >> Focus.set (credential_ => previousPath_) Nothing
@@ -44,37 +44,37 @@ logout =
     ]
 
 
-login : Credential.Token full -> GeneralInfo m full -> ( GeneralInfo m full, Cmd msg )
+login : Credential.Token account -> GeneralInfo m account -> ( GeneralInfo m account, Cmd msg )
 login token =
   Focus.set (credential_ => token_) (Just token)
   >> Moment.batch
     (case token of
       Credential.NoToken      -> [ save ]
       Credential.ResetToken _ -> [ save ]
-      Credential.FullToken  _ ->
-        [ save
-        , previousPath >> Location.redirectTo
-        ]
       Credential.LimitedToken name token ->
         [ save
         , case token.info.status of
           Credential.LimitedRegistered   -> always (name |> limitedVerifyPath |> Location.redirectTo)
           Credential.LimitedUnregistered -> always (name |> limitedSetupPath  |> Location.redirectTo)
         ]
+      Credential.FullToken _ ->
+        [ save
+        , previousPath >> Location.redirectTo
+        ]
     )
 
 
-save : GeneralInfo m full -> Cmd msg
+save : GeneralInfo m account -> Cmd msg
 save = .credential >> encode >> Storage.saveCredential
 
-encode : Credential full -> Encode.Value
+encode : Credential account -> Encode.Value
 encode credential = Encode.object
   [ (credential.token |> key, credential.token        |> defaultNull encodeToken)
   , ("rememberMe",            credential.rememberMe   |> Encode.bool)
   , ("previousPath",          credential.previousPath |> defaultNull Encode.string)
   ]
 
-key : Maybe (Credential.Token full) -> String
+key : Maybe (Credential.Token account) -> String
 key token =
   case token of
     Just (Credential.ResetToken        _) -> "reset"
@@ -82,7 +82,7 @@ key token =
     Just (Credential.LimitedToken name _) -> "limited." ++ name
     _ -> "no-token"
 
-encodeToken : Credential.Token full -> Encode.Value
+encodeToken : Credential.Token account -> Encode.Value
 encodeToken token =
   case token of
     Credential.NoToken                -> Encode.null
@@ -93,7 +93,7 @@ encodeToken token =
 defaultNull f = Maybe.map f >> Maybe.withDefault Encode.null
 
 
-rememberMe : Bool -> GeneralInfo m full -> GeneralInfo m full
+rememberMe : Bool -> GeneralInfo m account -> GeneralInfo m account
 rememberMe = Focus.set (credential_ => rememberMe_)
 
 
@@ -108,5 +108,5 @@ limitedSetupPath : String -> String
 limitedSetupPath name =
   Env.pageRoot ++ (name |> Config.limitedSetupPath)
 
-previousPath : GeneralInfo m full -> String
+previousPath : GeneralInfo m account -> String
 previousPath = .credential >> .previousPath >> Maybe.withDefault (Env.pageRoot ++ Config.topPath)

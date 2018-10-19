@@ -18,7 +18,7 @@ type alias I18n =
   , menu  : String -> String
   }
 
-breadcrumb : I18n -> Main.Base m info full -> Html msg
+breadcrumb : I18n -> Main.Base m info account -> Html msg
 breadcrumb i18n model =
   case model.info.menu |> Nav.active of
     Nothing -> H.text ""
@@ -38,7 +38,7 @@ breadcrumb i18n model =
             (withSearch >> link i18n model >> List.singleton >> H.li [])
           )
 
-link : I18n -> Main.Base m info full -> ( Nav.Item, Location.Search ) -> Html msg
+link : I18n -> Main.Base m info account -> ( Nav.Item, Location.Search ) -> Html msg
 link i18n model ((Nav.Item info), search) =
   H.a [ A.href <| (info.path |> Href.href search) ] <| List.concat
     [ [ Fa.solid info.icon ["fw"]
@@ -58,7 +58,7 @@ badgeList =
     )
   >> List.intersperse (H.text " ")
 
-side : I18n -> (Main.Msg full -> msg) -> Html msg -> Main.Base m info full -> Html msg
+side : I18n -> (Main.Msg account -> msg) -> Html msg -> Main.Base m info account -> Html msg
 side i18n mapper content model =
   H.nav []
     [ model |> header
@@ -67,7 +67,7 @@ side i18n mapper content model =
     , model |> footer
     ]
 
-header : Main.Base m info full -> Html msg
+header : Main.Base m info account -> Html msg
 header model =
   H.header []
     [ H.p []
@@ -81,7 +81,7 @@ header model =
       ]
     ]
 
-menu : I18n -> (Main.Msg full -> msg) -> Main.Base m info full -> Html msg
+menu : I18n -> (Main.Msg account -> msg) -> Main.Base m info account -> Html msg
 menu i18n mapper model =
   let
     isCollapsedGroup group =
@@ -128,5 +128,5 @@ menu i18n mapper model =
         )
       )
 
-footer : Main.Base m info full -> Html msg
+footer : Main.Base m info account -> Html msg
 footer model = H.footer [] [ H.p [] [ H.text "version : ", H.text model.info.application.version ] ]

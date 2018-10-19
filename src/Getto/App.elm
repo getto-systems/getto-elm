@@ -36,13 +36,13 @@ credential_ = Focus.create .credential (\f model -> { model | credential = model
 token_      = Focus.create .token      (\f model -> { model | token      = model.token      |> f })
 
 
-type Msg full
-  = Done (Opts.RenewResult full)
+type Msg account
+  = Done (Opts.RenewResult account)
 
-type alias AppInfo full = GeneralInfo {} full
-type alias Init full model msg = AppInfo full -> ( model, Cmd msg )
+type alias AppInfo account = GeneralInfo {} account
+type alias Init account model msg = AppInfo account -> ( model, Cmd msg )
 
-init : Credential.AuthMethod -> (Msg full -> msg) -> Init full model msg -> Opts full -> Flags -> ( model, Cmd msg )
+init : Credential.AuthMethod -> (Msg account -> msg) -> Init account model msg -> Opts account -> Flags -> ( model, Cmd msg )
 init authMethod msg func opts flags =
   { application =
     { version   = opts.version
@@ -60,20 +60,29 @@ init authMethod msg func opts flags =
     , rememberMe   = True
     , previousPath = Nothing
     }
+  , account = Nothing
   }
   |> initCredential opts
+  |> Moment.andThen ( initAccount >> Moment.nop )
   |> Moment.map msg
   |> Moment.andThen func
 
 
-initCredential : Opts full -> AppInfo full -> ( AppInfo full, Cmd (Msg full) )
+initAccount : AppInfo account -> AppInfo account
+initAccount info =
+  case info.credential.token of
+    Just (Credential.FullToken token) ->
+      { info | account = token.account |> Just }
+    _ -> info
+
+initCredential : Opts account -> AppInfo account -> ( AppInfo account, Cmd (Msg account) )
 initCredential opts model =
   case model.credential.authMethod of
     Credential.Public ->
       let
         storage =
           model.storage.global.credential
-          |> Decode.decodeValue (opts.decoder.full |> fullStorage)
+          |> Decode.decodeValue (opts.decoder.account |> fullStorage)
           |> Result.toMaybe
       in
         model
@@ -142,7 +151,7 @@ initCredential opts model =
       let
         storage =
           model.storage.global.credential
-          |> Decode.decodeValue (opts.decoder.full |> fullStorage)
+          |> Decode.decodeValue (opts.decoder.account |> fullStorage)
           |> Result.toMaybe
       in
         case storage of
@@ -254,7 +263,7 @@ limitedInfo =
     )
 
 
-update : Msg full -> GeneralInfo m full -> ( GeneralInfo m full, Cmd (Msg full) )
+update : Msg account -> GeneralInfo m account -> ( GeneralInfo m account, Cmd (Msg account) )
 update msg model =
   case msg of
     Done result ->

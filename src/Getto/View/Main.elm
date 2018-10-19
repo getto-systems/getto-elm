@@ -10,7 +10,7 @@ import Html as H exposing ( Html )
 import Html.Attributes as A
 import Html.Events as E
 
-header : Main.Base m info full -> Html msg
+header : Main.Base m info account -> Html msg
 header model =
   H.header []
     [ H.p []
@@ -24,7 +24,7 @@ header model =
       ]
     ]
 
-footer : Main.Base m info full -> Html msg
+footer : Main.Base m info account -> Html msg
 footer model =
   H.footer []
     [ H.p []
