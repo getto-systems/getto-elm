@@ -60,20 +60,11 @@ init authMethod msg func opts flags =
     , rememberMe   = True
     , previousPath = Nothing
     }
-  , account = Nothing
   }
   |> initCredential opts
-  |> Moment.andThen ( initAccount >> Moment.nop )
   |> Moment.map msg
   |> Moment.andThen func
 
-
-initAccount : AppInfo account -> AppInfo account
-initAccount info =
-  case info.credential.token of
-    Just (Credential.FullToken token) ->
-      { info | account = token.account |> Just }
-    _ -> info
 
 initCredential : Opts account -> AppInfo account -> ( AppInfo account, Cmd (Msg account) )
 initCredential opts model =

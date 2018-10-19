@@ -45,7 +45,6 @@ init authMethod msg func = App.init authMethod (Super >> msg) <|
     , page        = info.page
     , project     = info.project
     , credential  = info.credential
-    , account     = info.account
     , menu        = info.storage.global.menu |> Nav.decode
     }
     |> func
