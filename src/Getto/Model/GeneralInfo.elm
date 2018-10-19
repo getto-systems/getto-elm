@@ -17,5 +17,4 @@ type alias GeneralInfo model account =
   , page        : Page
   , project     : Project
   , credential  : Credential account
-  , account     : Maybe account
   }

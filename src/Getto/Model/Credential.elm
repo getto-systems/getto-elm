@@ -10,6 +10,7 @@ module Getto.Model.Credential exposing
   , FullInfo
   , Limited
   , LimitedInfo
+  , account
   )
 
 type alias Credential account =
@@ -70,3 +71,9 @@ type alias Limited =
 type alias LimitedInfo =
   { status : LimitedStatus
   }
+
+account : Credential account -> Maybe account
+account credential =
+  case credential.token of
+    Just (FullToken token) -> Just token.account
+    _ -> Nothing
