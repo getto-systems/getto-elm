@@ -12,9 +12,9 @@ module Getto.Model.Credential exposing
   , LimitedInfo
   )
 
-type alias Credential full =
+type alias Credential account =
   { authMethod   : AuthMethod
-  , token        : Maybe (Token full)
+  , token        : Maybe (Token account)
   , rememberMe   : Bool
   , previousPath : Maybe String
   }
@@ -42,10 +42,10 @@ type LimitedStatus
   | LimitedUnregistered
 
 
-type Token full
+type Token account
   = NoToken
   | ResetToken Reset
-  | FullToken (Full full)
+  | FullToken (Full account)
   | LimitedToken String Limited
 
 type alias Reset =

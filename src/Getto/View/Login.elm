@@ -9,7 +9,7 @@ import Getto.View.Fa as Fa
 import Html as H exposing ( Html )
 import Html.Attributes as A
 
-view : (Login.Base m info full -> List (Html msg)) -> Login.Base m info full -> Html msg
+view : (Login.Base m info account -> List (Html msg)) -> Login.Base m info account -> Html msg
 view content model =
   H.div [ A.class "LoginLayout" ]
     [ H.article [] <| List.concat
