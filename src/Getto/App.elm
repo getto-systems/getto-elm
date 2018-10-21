@@ -53,11 +53,10 @@ init authMethod msg func opts flags =
   , page       = flags.page
   , project    = flags.project
   , credential =
-    { authMethod   = authMethod
-    , token        = Nothing
-    , rememberMe   = True
-    , previousPath = Nothing
-    , issuedAt     = Nothing
+    { authMethod = authMethod
+    , token      = Nothing
+    , rememberMe = True
+    , issuedAt   = Nothing
     }
   }
   |> initCredential opts
@@ -79,15 +78,14 @@ initCredential opts model =
         |> Focus.update credential_
           (\credential ->
             { credential
-            | token        = Just Credential.NoToken
-            , rememberMe   = storage |> Maybe.map .rememberMe |> Maybe.withDefault True
-            , previousPath = storage |> Maybe.andThen .previousPath
+            | token      = Just Credential.NoToken
+            , rememberMe = storage |> Maybe.map .rememberMe |> Maybe.withDefault True
             }
           )
         |> Moment.batch
           (case storage of
             Nothing -> []
-            Just _  -> [ Auth.previousPath >> Location.redirectTo ]
+            Just _  -> [ always (Auth.topPath |> Location.redirectTo) ]
           )
 
     Credential.ResetAuth config ->
@@ -123,9 +121,8 @@ initCredential opts model =
             |> Focus.update credential_
               (\credential ->
                 { credential
-                | token        = storage.limited |> Credential.LimitedToken name |> Just
-                , rememberMe   = storage.rememberMe
-                , previousPath = storage.previousPath
+                | token      = storage.limited |> Credential.LimitedToken name |> Just
+                , rememberMe = storage.rememberMe
                 }
               )
             |> Moment.batch
@@ -160,10 +157,9 @@ initCredential opts model =
               |> Focus.update credential_
                 (\credential ->
                   { credential
-                  | token        = storage.full |> Credential.FullToken |> Just
-                  , rememberMe   = storage.rememberMe
-                  , previousPath = model.page.query |> Just
-                  , issuedAt     = storage.issuedAt
+                  | token      = storage.full |> Credential.FullToken |> Just
+                  , rememberMe = storage.rememberMe
+                  , issuedAt   = storage.issuedAt
                   }
                 )
               |> Moment.batch
@@ -174,19 +170,17 @@ initCredential opts model =
 
 
 type alias FullStorage a =
-  { full         : Credential.Full a
-  , rememberMe   : Bool
-  , previousPath : Maybe String
-  , issuedAt     : Maybe String
+  { full       : Credential.Full a
+  , rememberMe : Bool
+  , issuedAt   : Maybe String
   }
 
 fullStorage : Decode.Decoder a -> Decode.Decoder (FullStorage a)
 fullStorage decoder =
   Decode.succeed FullStorage
-  |: (Decode.at ["full"]         (full decoder))
-  |: (Decode.at ["rememberMe"]    Decode.bool)
-  |: (Decode.at ["previousPath"] (Decode.maybe Decode.string))
-  |: (Decode.at ["issuedAt"] (Decode.maybe Decode.string))
+  |: (Decode.at ["full"]      (full decoder))
+  |: (Decode.at ["rememberMe"] Decode.bool)
+  |: (Decode.at ["issuedAt"]  (Decode.maybe Decode.string))
 
 type alias Full a =
   { account : a
@@ -201,17 +195,15 @@ full decoder =
 
 
 type alias LimitedStorage =
-  { limited      : Credential.Limited
-  , rememberMe   : Bool
-  , previousPath : Maybe String
+  { limited    : Credential.Limited
+  , rememberMe : Bool
   }
 
 limitedStorage : String -> Decode.Decoder LimitedStorage
 limitedStorage name =
   Decode.succeed LimitedStorage
-  |: (Decode.at ["limited." ++ name]  limited)
-  |: (Decode.at ["rememberMe"]        Decode.bool)
-  |: (Decode.at ["previousPath"]     (Decode.maybe Decode.string))
+  |: (Decode.at ["limited." ++ name] limited)
+  |: (Decode.at ["rememberMe"]       Decode.bool)
 
 type alias Limited =
   { info  : Credential.LimitedInfo
