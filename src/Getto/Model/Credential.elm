@@ -7,7 +7,6 @@ module Getto.Model.Credential exposing
   , Token(..)
   , Reset
   , Full
-  , FullInfo
   , Limited
   , LimitedInfo
   , account
@@ -18,6 +17,7 @@ type alias Credential account =
   , token        : Maybe (Token account)
   , rememberMe   : Bool
   , previousPath : Maybe String
+  , issuedAt     : Maybe String
   }
 
 type AuthMethod
@@ -55,12 +55,7 @@ type alias Reset =
 
 type alias Full a =
   { account : a
-  , info    : FullInfo
   , token   : String
-  }
-
-type alias FullInfo =
-  { issued_at : String
   }
 
 type alias Limited =

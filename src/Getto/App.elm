@@ -2,7 +2,6 @@ module Getto.App exposing
   ( Msg
   , init
   , update
-  , fullInfo
   , limitedInfo
   , info_
   )
@@ -59,6 +58,7 @@ init authMethod msg func opts flags =
     , token        = Nothing
     , rememberMe   = True
     , previousPath = Nothing
+    , issuedAt     = Nothing
     }
   }
   |> initCredential opts
@@ -152,11 +152,11 @@ initCredential opts model =
               renewRequired =
                 case
                   ( model.page.loadAt |> Date.Extra.fromIsoString
-                  , storage.full.info.issued_at |> Date.Extra.fromIsoString
+                  , storage.issuedAt  |> Maybe.andThen Date.Extra.fromIsoString
                   )
                 of
-                  (Just loadAt, Just issued_at) ->
-                    Date.Extra.diff Date.Extra.Hour issued_at loadAt > config.expireHours
+                  (Just loadAt, Just issuedAt) ->
+                    Date.Extra.diff Date.Extra.Hour issuedAt loadAt > config.expireHours
                   _ -> True
             in
               { model | api = { token = storage.full.token |> Just } }
@@ -166,6 +166,7 @@ initCredential opts model =
                   | token        = storage.full |> Credential.FullToken |> Just
                   , rememberMe   = storage.rememberMe
                   , previousPath = model.page.query |> Just
+                  , issuedAt     = storage.issuedAt
                   }
                 )
               |> Moment.batch
@@ -179,6 +180,7 @@ type alias FullStorage a =
   { full         : Credential.Full a
   , rememberMe   : Bool
   , previousPath : Maybe String
+  , issuedAt     : Maybe String
   }
 
 fullStorage : Decode.Decoder a -> Decode.Decoder (FullStorage a)
@@ -187,10 +189,10 @@ fullStorage decoder =
   |: (Decode.at ["full"]         (full decoder))
   |: (Decode.at ["rememberMe"]    Decode.bool)
   |: (Decode.at ["previousPath"] (Decode.maybe Decode.string))
+  |: (Decode.at ["issuedAt"] (Decode.maybe Decode.string))
 
 type alias Full a =
   { account : a
-  , info    : Credential.FullInfo
   , token   : String
   }
 
@@ -198,17 +200,7 @@ full : Decode.Decoder a -> Decode.Decoder (Credential.Full a)
 full decoder =
   Decode.succeed Full
   |: (AuthDecode.jwt decoder)
-  |: (AuthDecode.jwt fullInfo)
   |: Decode.string
-
-type alias FullInfo =
-  { issued_at : String
-  }
-
-fullInfo : Decode.Decoder FullInfo
-fullInfo =
-  Decode.succeed FullInfo
-  |: (Decode.at ["issued_at"] Decode.string)
 
 
 type alias LimitedStorage =
