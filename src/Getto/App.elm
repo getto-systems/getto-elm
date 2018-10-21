@@ -153,7 +153,7 @@ initCredential opts model =
                   )
                 of
                   (Just loadAt, Just issuedAt) ->
-                    Date.Extra.diff Date.Extra.Second issuedAt loadAt > config.expireHours
+                    Date.Extra.diff Date.Extra.Second issuedAt loadAt > config.expireSeconds
                   _ -> True
             in
               { model | api = { token = storage.full.token |> Just } }

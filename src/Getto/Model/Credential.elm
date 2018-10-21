@@ -31,7 +31,7 @@ type alias ResetConfig =
   }
 
 type alias FullConfig =
-  { expireHours : Int
+  { expireSeconds : Int
   }
 
 type alias LimitedConfig =
