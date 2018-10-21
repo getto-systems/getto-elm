@@ -32,7 +32,6 @@ import Focus exposing ( (=>) )
 
 info_       = Focus.create .info       (\f model -> { model | info       = model.info       |> f })
 credential_ = Focus.create .credential (\f model -> { model | credential = model.credential |> f })
-token_      = Focus.create .token      (\f model -> { model | token      = model.token      |> f })
 
 
 type Msg account
@@ -154,7 +153,7 @@ initCredential opts model =
                   )
                 of
                   (Just loadAt, Just issuedAt) ->
-                    Date.Extra.diff Date.Extra.Hour issuedAt loadAt > config.expireHours
+                    Date.Extra.diff Date.Extra.Second issuedAt loadAt > config.expireHours
                   _ -> True
             in
               { model | api = { token = storage.full.token |> Just } }
@@ -249,8 +248,6 @@ update msg model =
   case msg of
     Done result ->
       case result of
-        Err _ -> model |> Moment.batch [ always (Auth.loginPath |> Location.redirectTo) ]
-        Ok token ->
-          model
-          |> Focus.set (credential_ => token_) (token |> Credential.FullToken |> Just)
-          |> Moment.nop
+        Ok token -> model |> Auth.register (token |> Credential.FullToken)
+        Err    _ -> model |> Auth.clear |> Moment.andThen
+                      (Moment.batch [ always (Auth.loginPath |> Location.redirectTo) ])

@@ -1,6 +1,7 @@
 module Getto.Auth exposing
   ( clear
   , logout
+  , register
   , login
   , rememberMe
   , loginPath
@@ -30,43 +31,48 @@ rememberMe_   = Focus.create .rememberMe   (\f model -> { model | rememberMe   =
 issuedAt_     = Focus.create .issuedAt     (\f model -> { model | issuedAt     = model.issuedAt     |> f })
 
 
-clear : GeneralInfo m account -> GeneralInfo m account
+clear : GeneralInfo m account -> ( GeneralInfo m account, Cmd msg )
 clear model =
   { model | api = { token = Nothing } }
   |> Focus.set (credential_ => token_) Nothing
+  |> Moment.batch [ save ]
 
 logout : GeneralInfo m account -> ( GeneralInfo m account, Cmd msg )
 logout =
-  clear
-  >> Focus.set (credential_ => previousPath_) Nothing
-  >> Moment.batch
-    [ save
-    , always (loginPath |> Location.redirectTo)
-    ]
+  clear >> Moment.andThen
+    ( Focus.set (credential_ => previousPath_) Nothing
+      >> Moment.batch [ always (loginPath |> Location.redirectTo) ]
+    )
 
 
-login : Credential.Token account -> GeneralInfo m account -> ( GeneralInfo m account, Cmd msg )
-login token =
+register : Credential.Token account -> GeneralInfo m account -> ( GeneralInfo m account, Cmd msg )
+register token =
   Focus.set (credential_ => token_) (Just token)
   >>
     (\model ->
       model |> Focus.set (credential_ => issuedAt_) (model.page.loadAt |> Just)
     )
-  >> Moment.batch
-    (case token of
-      Credential.NoToken      -> [ save ]
-      Credential.ResetToken _ -> [ save ]
-      Credential.FullToken  _ -> [ save, previousPath >> Location.redirectTo ]
-      Credential.LimitedToken name token ->
-        [ save
-        , \model ->
-          case model.credential.authMethod of
-            Credential.Public ->
-              case token.info.status of
-                Credential.LimitedRegistered   -> name |> limitedVerifyPath |> Location.redirectTo
-                Credential.LimitedUnregistered -> name |> limitedSetupPath  |> Location.redirectTo
-            _ -> Cmd.none
-        ]
+  >> Moment.batch [ save ]
+
+login : Credential.Token account -> GeneralInfo m account -> ( GeneralInfo m account, Cmd msg )
+login token =
+  register token
+  >> Moment.andThen
+    (Moment.batch
+      (case token of
+        Credential.NoToken      -> []
+        Credential.ResetToken _ -> []
+        Credential.FullToken  _ -> [ previousPath >> Location.redirectTo ]
+        Credential.LimitedToken name token ->
+          [ \model ->
+            case model.credential.authMethod of
+              Credential.Public ->
+                case token.info.status of
+                  Credential.LimitedRegistered   -> name |> limitedVerifyPath |> Location.redirectTo
+                  Credential.LimitedUnregistered -> name |> limitedSetupPath  |> Location.redirectTo
+              _ -> Cmd.none
+          ]
+      )
     )
 
 
