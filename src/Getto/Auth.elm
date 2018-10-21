@@ -51,15 +51,16 @@ login token =
     (case token of
       Credential.NoToken      -> [ save ]
       Credential.ResetToken _ -> [ save ]
+      Credential.FullToken  _ -> [ save, previousPath >> Location.redirectTo ]
       Credential.LimitedToken name token ->
         [ save
-        , case token.info.status of
-          Credential.LimitedRegistered   -> always (name |> limitedVerifyPath |> Location.redirectTo)
-          Credential.LimitedUnregistered -> always (name |> limitedSetupPath  |> Location.redirectTo)
-        ]
-      Credential.FullToken _ ->
-        [ save
-        , previousPath >> Location.redirectTo
+        , \model ->
+          case model.credential.authMethod of
+            Credential.Public ->
+              case token.info.status of
+                Credential.LimitedRegistered   -> name |> limitedVerifyPath |> Location.redirectTo
+                Credential.LimitedUnregistered -> name |> limitedSetupPath  |> Location.redirectTo
+            _ -> Cmd.none
         ]
     )
 
