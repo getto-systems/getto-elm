@@ -13,11 +13,10 @@ module Getto.Model.Credential exposing
   )
 
 type alias Credential account =
-  { authMethod   : AuthMethod
-  , token        : Maybe (Token account)
-  , rememberMe   : Bool
-  , previousPath : Maybe String
-  , issuedAt     : Maybe String
+  { authMethod : AuthMethod
+  , token      : Maybe (Token account)
+  , rememberMe : Bool
+  , issuedAt   : Maybe String
   }
 
 type AuthMethod

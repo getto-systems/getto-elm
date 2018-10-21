@@ -4,10 +4,10 @@ module Getto.Auth exposing
   , register
   , login
   , rememberMe
+  , topPath
   , loginPath
   , limitedVerifyPath
   , limitedSetupPath
-  , previousPath
   )
 
 import Getto.Model.GeneralInfo exposing ( GeneralInfo )
@@ -24,11 +24,10 @@ import Json.Encode as Encode
 import Focus exposing ( (=>) )
 
 
-credential_   = Focus.create .credential   (\f model -> { model | credential   = model.credential   |> f })
-token_        = Focus.create .token        (\f model -> { model | token        = model.token        |> f })
-previousPath_ = Focus.create .previousPath (\f model -> { model | previousPath = model.previousPath |> f })
-rememberMe_   = Focus.create .rememberMe   (\f model -> { model | rememberMe   = model.rememberMe   |> f })
-issuedAt_     = Focus.create .issuedAt     (\f model -> { model | issuedAt     = model.issuedAt     |> f })
+credential_ = Focus.create .credential (\f model -> { model | credential = model.credential |> f })
+token_      = Focus.create .token      (\f model -> { model | token      = model.token      |> f })
+rememberMe_ = Focus.create .rememberMe (\f model -> { model | rememberMe = model.rememberMe |> f })
+issuedAt_   = Focus.create .issuedAt   (\f model -> { model | issuedAt   = model.issuedAt   |> f })
 
 
 clear : GeneralInfo m account -> ( GeneralInfo m account, Cmd msg )
@@ -40,9 +39,7 @@ clear model =
 logout : GeneralInfo m account -> ( GeneralInfo m account, Cmd msg )
 logout =
   clear >> Moment.andThen
-    ( Focus.set (credential_ => previousPath_) Nothing
-      >> Moment.batch [ always (loginPath |> Location.redirectTo) ]
-    )
+    (Moment.batch [ always (loginPath |> Location.redirectTo) ])
 
 
 register : Credential.Token account -> GeneralInfo m account -> ( GeneralInfo m account, Cmd msg )
@@ -62,7 +59,7 @@ login token =
       (case token of
         Credential.NoToken      -> []
         Credential.ResetToken _ -> []
-        Credential.FullToken  _ -> [ previousPath >> Location.redirectTo ]
+        Credential.FullToken  _ -> [ always (topPath |> Location.redirectTo) ]
         Credential.LimitedToken name token ->
           [ \model ->
             case model.credential.authMethod of
@@ -83,7 +80,6 @@ encode : Credential account -> Encode.Value
 encode credential = Encode.object
   [ (credential.token |> key, credential.token        |> defaultNull encodeToken)
   , ("rememberMe",            credential.rememberMe   |> Encode.bool)
-  , ("previousPath",          credential.previousPath |> defaultNull Encode.string)
   , ("issuedAt",              credential.issuedAt     |> defaultNull Encode.string)
   ]
 
@@ -110,6 +106,9 @@ rememberMe : Bool -> GeneralInfo m account -> GeneralInfo m account
 rememberMe = Focus.set (credential_ => rememberMe_)
 
 
+topPath : String
+topPath = Env.pageRoot ++ Config.topPath
+
 loginPath : String
 loginPath = Env.pageRoot ++ Config.loginPath
 
@@ -120,6 +119,3 @@ limitedVerifyPath name =
 limitedSetupPath : String -> String
 limitedSetupPath name =
   Env.pageRoot ++ (name |> Config.limitedSetupPath)
-
-previousPath : GeneralInfo m account -> String
-previousPath = .credential >> .previousPath >> Maybe.withDefault (Env.pageRoot ++ Config.topPath)
