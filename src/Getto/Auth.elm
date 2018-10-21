@@ -27,6 +27,7 @@ credential_   = Focus.create .credential   (\f model -> { model | credential   =
 token_        = Focus.create .token        (\f model -> { model | token        = model.token        |> f })
 previousPath_ = Focus.create .previousPath (\f model -> { model | previousPath = model.previousPath |> f })
 rememberMe_   = Focus.create .rememberMe   (\f model -> { model | rememberMe   = model.rememberMe   |> f })
+issuedAt_     = Focus.create .issuedAt     (\f model -> { model | issuedAt     = model.issuedAt     |> f })
 
 
 clear : GeneralInfo m account -> GeneralInfo m account
@@ -47,6 +48,10 @@ logout =
 login : Credential.Token account -> GeneralInfo m account -> ( GeneralInfo m account, Cmd msg )
 login token =
   Focus.set (credential_ => token_) (Just token)
+  >>
+    (\model ->
+      model |> Focus.set (credential_ => issuedAt_) (model.page.loadAt |> Just)
+    )
   >> Moment.batch
     (case token of
       Credential.NoToken      -> [ save ]
@@ -73,6 +78,7 @@ encode credential = Encode.object
   [ (credential.token |> key, credential.token        |> defaultNull encodeToken)
   , ("rememberMe",            credential.rememberMe   |> Encode.bool)
   , ("previousPath",          credential.previousPath |> defaultNull Encode.string)
+  , ("issuedAt",              credential.issuedAt     |> defaultNull Encode.string)
   ]
 
 key : Maybe (Credential.Token account) -> String
