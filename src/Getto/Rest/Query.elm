@@ -36,8 +36,13 @@ search = List.concatMap <|
           else vals |> List.map (\val -> ( key ++ "[]", val ))
       SearchGroup group ->
         group
-        |> search
         |> List.map
           (\(subKey, val) ->
-            ( key ++ "[" ++ subKey ++ "]", val)
+            ( case subKey |> String.split "[" of
+              [] -> key
+              head :: tail ->
+                [key] ++ ((head ++ "]") :: tail) |> String.join "["
+            , val
+            )
           )
+        |> search

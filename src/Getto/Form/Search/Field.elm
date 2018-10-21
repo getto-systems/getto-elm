@@ -492,9 +492,8 @@ sortQuery =
   .fields
   >> .sort
   >> .current
-  >> Maybe.map toSortString
-  >> Maybe.withDefault ""
-  >> List.singleton
+  >> Maybe.map (toSortString >> List.singleton)
+  >> Maybe.withDefault []
   >> Query.list
 
 pageQuery : Model a -> Query.SearchValue

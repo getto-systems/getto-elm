@@ -17,7 +17,6 @@ module Getto.Rest exposing
   , withID
   , withRelatedID
   , withIDSearch
-  , key
   )
 
 import Getto.Model.Api exposing ( Api )
@@ -25,6 +24,7 @@ import Getto.Model.Api exposing ( Api )
 import Getto.Env as Env
 import Getto.Location as Location
 import Getto.Href as Href
+import Getto.Rest.Query as Query
 import Getto.Rest.Part as Part
 
 import Http
@@ -46,9 +46,9 @@ type alias RestResult a = Result Http.Error a
 isConnecting : Maybe State -> Bool
 isConnecting = (==) (Just Connecting)
 
-get : Headers -> Decode.Decoder a -> List ( String, Location.Search ) -> String -> Api -> Http.Request a
+get : Headers -> Decode.Decoder a -> Query.Search -> String -> Api -> Http.Request a
 get headers decoder data path api =
-  request (always Http.emptyBody) "GET" headers decoder () (path |> Href.url (data |> search)) api
+  request (always Http.emptyBody) "GET" headers decoder () (path |> Href.url (data |> Query.search)) api
 
 create = request jsonBody "POST"
 update = request jsonBody "PUT"
@@ -58,11 +58,11 @@ upload = request multipartBody "POST"
 
 request : (data -> Http.Body) -> String -> Headers -> Decode.Decoder a -> data -> String -> Api -> Http.Request a
 request toBody method headers decoder data path api = Http.request <|
-  { method = method
+  { method  = method
   , headers = api |> headers
-  , url = url path
-  , body = data |> toBody
-  , expect = Http.expectJson decoder
+  , url     = path |> Href.prepend Env.apiHost
+  , body    = data |> toBody
+  , expect  = Http.expectJson decoder
   , timeout = Nothing -- TODO タイムアウトを設定するべき
   , withCredentials = False
   }
@@ -72,9 +72,6 @@ done result =
   case result of
     Result.Ok _ -> Nothing
     Result.Err error -> Just <| Err error
-
-url : String -> String
-url path = Env.apiHost ++ path
 
 jsonBody : List ( String, JsonBody ) -> Http.Body
 jsonBody =
@@ -95,19 +92,6 @@ multipartBody =
     )
     []
   >> Http.multipartBody
-
-search : List ( String, Location.Search ) -> Location.Search
-search =
-  List.foldr
-    (\(group, list) acc ->
-      list
-      |> List.foldr
-        (\(name, value) acc ->
-          acc ++ [(key [group,name], value)]
-        )
-        acc
-    )
-    []
 
 without : List String -> List ( String, a ) -> List ( String, a )
 without names = List.filter <|
