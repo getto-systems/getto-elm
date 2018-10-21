@@ -133,8 +133,6 @@ initCredential opts model =
               (case (config.status, storage.limited.info.status) of
                 (Credential.LimitedRegistered, Credential.LimitedUnregistered) ->
                   [ always (name |> Auth.limitedSetupPath |> Location.redirectTo) ]
-                (Credential.LimitedUnregistered, Credential.LimitedRegistered) ->
-                  [ always (name |> Auth.limitedVerifyPath |> Location.redirectTo) ]
                 _ -> []
               )
 
