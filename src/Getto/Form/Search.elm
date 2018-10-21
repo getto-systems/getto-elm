@@ -26,7 +26,8 @@ port module Getto.Form.Search exposing
   , loading
   )
 
-import Getto
+import Getto.Model.Api exposing ( Api )
+
 import Getto.I18n as I18n
 import Getto.Rest as Rest
 import Getto.Rest.Search as Search
@@ -46,7 +47,7 @@ port fixedMidashi : () -> Cmd msg
 
 type alias Model data row a = Field.Model
   { a
-  | api : Getto.Api
+  | api : Api
   , search : Maybe Rest.State
   , response : Maybe (Response data row)
   }
