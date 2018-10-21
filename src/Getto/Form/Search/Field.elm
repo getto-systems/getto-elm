@@ -494,7 +494,8 @@ sortQuery =
   >> .current
   >> Maybe.map toSortString
   >> Maybe.withDefault ""
-  >> Query.string
+  >> List.singleton
+  >> Query.list
 
 pageQuery : Model a -> Query.SearchValue
 pageQuery =
