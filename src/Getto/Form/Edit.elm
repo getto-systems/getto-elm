@@ -32,6 +32,7 @@ module Getto.Form.Edit exposing
   , textBox
   , textBoxLarge
   , textBoxXLarge
+  , telBox
   , numberBox
   , numberBoxLarge
   , dateBox
@@ -344,6 +345,9 @@ textBoxLarge = textInput "text" ["is-large"]
 
 textBoxXLarge : Modify msg -> String -> Content a msg
 textBoxXLarge = textInput "text" ["is-xlarge"]
+
+telBox : Modify msg -> String -> Content a msg
+telBox = textInput "tel" []
 
 numberBox : Modify msg -> String -> Content a msg
 numberBox = textInput "number" ["is-tiny"]
