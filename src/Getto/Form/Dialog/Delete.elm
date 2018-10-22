@@ -10,7 +10,7 @@ module Getto.Form.Dialog.Delete exposing
   , message
   )
 
-import Getto
+import Getto.Model.Api exposing ( Api )
 import Getto.I18n as I18n
 import Getto.Rest as Rest
 import Getto.Moment as Moment
@@ -25,7 +25,7 @@ import Html.Events as E
 
 type alias Model a =
   { a
-  | api : Getto.Api
+  | api : Api
   , delete : Maybe (Maybe Rest.State)
   }
 
