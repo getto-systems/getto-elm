@@ -1,6 +1,7 @@
 module Getto.Href exposing
   ( href
   , url
+  , prepend
   , chop
   )
 
