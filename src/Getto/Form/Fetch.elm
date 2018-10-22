@@ -6,7 +6,7 @@ module Getto.Form.Fetch exposing
   , form
   )
 
-import Getto
+import Getto.Model.Api exposing ( Api )
 import Getto.I18n as I18n
 import Getto.Rest as Rest
 import Getto.View.Fa as Fa
@@ -18,7 +18,7 @@ import Html.Attributes as A
 
 type alias Model a =
   { a
-  | api : Getto.Api
+  | api : Api
   , fetch : Maybe Rest.State
   }
 
