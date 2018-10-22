@@ -35,7 +35,7 @@ module Getto.Form.Edit exposing
   , telBox
   , numberBox
   , numberBoxLarge
-  , zipcodeBox
+  , postalCodeBox
   , regionBox
   , localityBox
   , addressBox
@@ -359,8 +359,8 @@ numberBox = textInput "number" ["is-tiny"]
 numberBoxLarge : Modify msg -> String -> Content a msg
 numberBoxLarge = textInput "number" ["is-small"]
 
-zipcodeBox : Modify msg -> String -> String -> Content a msg
-zipcodeBox msg class = textInput "text" ["is-small", class] msg
+postalCodeBox : Modify msg -> String -> String -> Content a msg
+postalCodeBox msg class = textInput "text" ["is-small", class] msg
 
 regionBox : Modify msg -> String -> String -> Content a msg
 regionBox = addressBoxWithSize ["is-small"]
