@@ -109,6 +109,7 @@ error error =
         401 -> "unauthorized"
         404 -> "not-found"
         405 -> "method-not-allowed"
+        406 -> "not-acceptable"
         409 -> "conflict"
         422 -> "unprocessable-entity"
         _   -> "bad-status"
