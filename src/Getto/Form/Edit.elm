@@ -35,6 +35,10 @@ module Getto.Form.Edit exposing
   , telBox
   , numberBox
   , numberBoxLarge
+  , zipcodeBox
+  , regionBox
+  , localityBox
+  , addressBox
   , dateBox
   , emailBox
   , passwordBox
@@ -354,6 +358,24 @@ numberBox = textInput "number" ["is-tiny"]
 
 numberBoxLarge : Modify msg -> String -> Content a msg
 numberBoxLarge = textInput "number" ["is-small"]
+
+zipcodeBox : Modify msg -> String -> String -> Content a msg
+zipcodeBox msg class = textInput "text" ["is-small", class] msg
+
+regionBox : Modify msg -> String -> String -> Content a msg
+regionBox = addressBoxWithSize ["is-small"]
+
+localityBox : Modify msg -> String -> String -> Content a msg
+localityBox = addressBoxWithSize []
+
+addressBox : Modify msg -> String -> String -> Content a msg
+addressBox = addressBoxWithSize ["is-large"]
+
+addressBoxWithSize : List String -> Modify msg -> String -> String -> Content a msg
+addressBoxWithSize size msg class name = Form.html (H.span [])
+  [ name |> textInput "text" size msg
+  , always <| H.input [ A.type_ "hidden", A.class class ] []
+  ]
 
 dateBox : Modify msg -> String -> Content a msg
 dateBox = textInput "date" []
