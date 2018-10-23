@@ -42,14 +42,14 @@ item msg page =
           [ link [ H.text (page.index |> toString) ] ]
 
 pagers : ( Int, Int ) -> List Pager
-pagers (current,max) =
+pagers (current,pages) =
   let
     window = 3
 
     page     index = { index = index, ellipsis = False, active = False }
     ellipsis index = { index = index, ellipsis = True,  active = False }
   in
-    case max of
+    case pages of
       0 -> [ page 1 ]
       all ->
         let

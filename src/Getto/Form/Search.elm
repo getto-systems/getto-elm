@@ -316,11 +316,11 @@ data (page,sort) cells model =
     Nothing -> H.text ""
     Just response ->
       let
-        paging = (model.fields.page, response.max) |> Pager.paging page
+        paging = (model.fields.page, response.pages) |> Pager.paging page
         data   = (model.fields.sort, (response, response.rows) ) |> Data.table sort cells
       in
         H.section [ A.class "data" ] <|
-          if response.max == 0
+          if response.pages == 0
             then
               [ paging
               , data
