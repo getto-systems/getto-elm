@@ -32,7 +32,7 @@ search = List.concatMap <|
       SearchString val -> [ ( key, val ) ]
       SearchList vals ->
         if vals |> List.isEmpty
-          then [ ( key, "" ) ]
+          then [ ( key ++ "[]", "" ) ]
           else vals |> List.map (\val -> ( key ++ "[]", val ))
       SearchGroup group ->
         group
