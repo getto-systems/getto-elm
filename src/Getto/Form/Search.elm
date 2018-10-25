@@ -58,7 +58,7 @@ type alias Response     data row = Search.Response data row
 
 type alias Pairs model msg = List ( List (Form.Content model msg), List (Form.Content model msg) )
 
-type alias Modify msg = Field.Method -> Field.Modify -> msg
+type alias Modify msg = String -> Field.Modify -> msg
 
 
 request : (Model data row a -> Request data response) -> (Model data row a -> Cmd msg) -> (SearchResult data response -> msg) -> Model data row a -> ( Model data row a, Cmd msg )
@@ -202,49 +202,49 @@ downloadLink href =
     ]
 
 
-textBox : Modify msg -> Field.Method -> Form.Content (Model data row a) msg
+textBox : Modify msg -> String -> Form.Content (Model data row a) msg
 textBox = textInput "text"
 
-textBoxBetween : Modify msg -> String -> Form.Content (Model data row a) msg
-textBoxBetween msg key =
+textBoxBetween : Modify msg -> ( String, String ) -> Form.Content (Model data row a) msg
+textBoxBetween msg (from,to) =
   Form.html (H.div [])
-    [ key |> Field.GTEQ |> textBox msg
+    [ from  |> textBox msg
     , " - " |> Form.text
-    , key |> Field.LTEQ |> textBox msg
+    , to    |> textBox msg
     ]
 
-dateBox : Modify msg -> Field.Method -> Form.Content (Model data row a) msg
+dateBox : Modify msg -> String -> Form.Content (Model data row a) msg
 dateBox = textInput "date"
 
-dateBoxBetween : Modify msg -> String -> Form.Content (Model data row a) msg
-dateBoxBetween msg key =
+dateBoxBetween : Modify msg -> ( String, String ) -> Form.Content (Model data row a) msg
+dateBoxBetween msg (from,to) =
   Form.html (H.div [])
-    [ key |> Field.GTEQ_DATETIME |> dateBox msg
+    [ from  |> dateBox msg
     , " - " |> Form.text
-    , key |> Field.LTEQ_DATETIME |> dateBox msg
+    , to    |> dateBox msg
     ]
 
-textInput : String -> Modify msg -> Field.Method -> Form.Content (Model data row a) msg
-textInput type_ msg method model =
+textInput : String -> Modify msg -> String -> Form.Content (Model data row a) msg
+textInput type_ msg name model =
   H.input
     [ A.type_ type_
-    , A.value (model |> Field.get method)
-    , E.onInput (Field.Set >> msg method)
+    , A.value (model |> Field.get name)
+    , E.onInput (Field.Set >> msg name)
     ] []
 
-checkList : Modify msg -> (String -> String) -> Field.Method -> Form.Content (Model data row a) msg
+checkList : Modify msg -> (String -> String) -> String -> Form.Content (Model data row a) msg
 checkList = checkListWithAttr []
 
-checkListBlock : Modify msg -> (String -> String) -> Field.Method -> Form.Content (Model data row a) msg
+checkListBlock : Modify msg -> (String -> String) -> String -> Form.Content (Model data row a) msg
 checkListBlock = checkListWithAttr [ A.class "is-block" ]
 
-checkListWithAttr : List (H.Attribute msg) -> Modify msg -> (String -> String) -> Field.Method -> Form.Content (Model data row a) msg
-checkListWithAttr attrs msg i18n method model =
+checkListWithAttr : List (H.Attribute msg) -> Modify msg -> (String -> String) -> String -> Form.Content (Model data row a) msg
+checkListWithAttr attrs msg i18n name model =
   let
-    values = model |> Field.values method
+    values = model |> Field.values name
   in
     model
-    |> Field.options method
+    |> Field.options name
     |> options i18n
     |> List.map
       (\(option,label) -> H.li []
@@ -252,7 +252,7 @@ checkListWithAttr attrs msg i18n method model =
           [ H.input
             [ A.type_ "checkbox"
             , A.checked (values |> List.member option)
-            , E.onClick (Field.Check option |> msg method)
+            , E.onClick (Field.Check option |> msg name)
             ] []
           , " "   |> H.text
           , label |> H.text
@@ -261,16 +261,16 @@ checkListWithAttr attrs msg i18n method model =
       )
     |> H.ul attrs
 
-boolList : Modify msg -> (Bool -> String) -> Field.Method -> Form.Content (Model data row a) msg
+boolList : Modify msg -> (Bool -> String) -> String -> Form.Content (Model data row a) msg
 boolList = boolListBox [ True, False ]
 
-boolListInvert : Modify msg -> (Bool -> String) -> Field.Method -> Form.Content (Model data row a) msg
+boolListInvert : Modify msg -> (Bool -> String) -> String -> Form.Content (Model data row a) msg
 boolListInvert = boolListBox [ False, True ]
 
-boolListBox : List Bool -> Modify msg -> (Bool -> String) -> Field.Method -> Form.Content (Model data row a) msg
-boolListBox values msg i18n method model =
+boolListBox : List Bool -> Modify msg -> (Bool -> String) -> String -> Form.Content (Model data row a) msg
+boolListBox values msg i18n name model =
   let
-    bools = model |> Field.bools method
+    bools = model |> Field.bools name
   in
     values
     |> options i18n
@@ -280,7 +280,7 @@ boolListBox values msg i18n method model =
           [ H.input
             [ A.type_ "checkbox"
             , A.checked (bools |> List.member option)
-            , E.onClick (Field.CheckBool option |> msg method)
+            , E.onClick (Field.CheckBool option |> msg name)
             ] []
           , " "   |> H.text
           , label |> H.text
@@ -289,10 +289,10 @@ boolListBox values msg i18n method model =
       )
     |> H.ul []
 
-select : Modify msg -> List ( String, String ) -> Field.Method -> Form.Content (Model data row a) msg
-select msg values method model =
+select : Modify msg -> List ( String, String ) -> String -> Form.Content (Model data row a) msg
+select msg values name model =
   let
-    value = model |> Field.get method
+    value = model |> Field.get name
   in
     values
     |> List.append [("", "select.all" |> I18n.t)]
@@ -304,7 +304,7 @@ select msg values method model =
           ]
           [ H.text label ]
       )
-    |> H.select [ E.onInput (Field.Set >> msg method) ]
+    |> H.select [ E.onInput (Field.Set >> msg name) ]
 
 options : (value -> String) -> List value -> List ( value, String )
 options toLabel = List.map (\value -> (value, value |> toLabel))

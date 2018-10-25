@@ -1,6 +1,5 @@
 module Getto.Form.Search.Field exposing
   ( Model
-  , Method(..)
   , Sort
   , SortOrder(..)
   , Modify(..)
@@ -57,28 +56,8 @@ type alias Struct =
   , pairs : Pairs
   }
 
-type alias Pair = ( Method, Spec )
-type alias Pairs = Dict Signature Spec
-type alias Signature = ( String, String )
-
-type alias DecodeData =
-  { column : String
-  , method : String
-  , search : Maybe String
-  , check  : Maybe (List String)
-  , bool   : Maybe (List Bool)
-  }
-
-type Method
-  = EQ            String
-  | CONT          String
-  | GTEQ          String
-  | LTEQ          String
-  | IN            String
-  | IS            String
-  | IS_NULL       String
-  | GTEQ_DATETIME String
-  | LTEQ_DATETIME String
+type alias Pair = ( String, Spec )
+type alias Pairs = Dict String Spec
 
 type Spec
   = String String String
@@ -137,10 +116,7 @@ fields pairs sortColumns =
   in
     { page = 1
     , sort = sort
-    , pairs =
-      pairs
-      |> List.map (\(method,spec) -> (method |> toSignature, spec))
-      |> Dict.fromList
+    , pairs = pairs |> Dict.fromList
     }
 
 string : String -> Spec
@@ -168,33 +144,33 @@ hasSort : String -> Sort -> Bool
 hasSort name = .columns >> Dict.member name
 
 
-get : Method -> Model a -> String
-get method model =
-  case model |> find method of
+get : String -> Model a -> String
+get name model =
+  case model |> find name of
     Just (String _ value) -> value
     _ -> ""
 
-values : Method -> Model a -> List String
-values method model =
-  case model |> find method of
+values : String -> Model a -> List String
+values name model =
+  case model |> find name of
     Just (CheckList _ _ group) -> group |> actives
     _ -> []
 
-bools : Method -> Model a -> List Bool
-bools method model =
-  case model |> find method of
+bools : String -> Model a -> List Bool
+bools name model =
+  case model |> find name of
     Just (BoolList _ group) -> group |> actives |> List.map toBool
     _ -> []
 
-options : Method -> Model a -> List String
-options method model =
-  case model |> find method of
+options : String -> Model a -> List String
+options name model =
+  case model |> find name of
     Just (CheckList _ options _) -> options
     _ -> []
 
 
-find : Method -> Model a -> Maybe Spec
-find method = pairs >> Dict.get (method |> toSignature)
+find : String -> Model a -> Maybe Spec
+find name = pairs >> Dict.get name
 
 pairs : Model a -> Pairs
 pairs = .fields >> .pairs
@@ -249,35 +225,35 @@ sortTo (column,order) = Focus.update (fields_ => sort_) <|
     }
 
 
-set : Method -> String -> Model a -> Model a
-set method value = Focus.update (fields_ => pairs_) <|
-  Dict.update (method |> toSignature) <|
+set : String -> String -> Model a -> Model a
+set name value = Focus.update (fields_ => pairs_) <|
+  Dict.update name <|
     \fieldValue ->
       case fieldValue of
         Just (String default _) -> Just (String default value)
         _ -> fieldValue
 
-check : Method -> String -> Model a -> Model a
-check method key = Focus.update (fields_ => pairs_) <|
-  Dict.update (method |> toSignature) <|
+check : String -> String -> Model a -> Model a
+check name key = Focus.update (fields_ => pairs_) <|
+  Dict.update name <|
     \fieldValue ->
       case fieldValue of
         Just (CheckList default options group) ->
           Just (CheckList default options (group |> Dict.update key (Maybe.map not)))
         _ -> fieldValue
 
-checkBool : Method -> Bool -> Model a -> Model a
-checkBool method key = Focus.update (fields_ => pairs_) <|
-  Dict.update (method |> toSignature) <|
+checkBool : String -> Bool -> Model a -> Model a
+checkBool name key = Focus.update (fields_ => pairs_) <|
+  Dict.update name <|
     \fieldValue ->
       case fieldValue of
         Just (BoolList default group) ->
           Just (BoolList default (group |> Dict.update (key |> toString) (Maybe.map not)))
         _ -> fieldValue
 
-sync : Method -> List String -> Model a -> Model a
-sync method names = Focus.update (fields_ => pairs_) <|
-  Dict.update (method |> toSignature) <|
+sync : String -> List String -> Model a -> Model a
+sync name names = Focus.update (fields_ => pairs_) <|
+  Dict.update name <|
     \fieldValue ->
       case fieldValue of
         Just (CheckList default options group) ->
@@ -290,13 +266,13 @@ sync method names = Focus.update (fields_ => pairs_) <|
           |> Dict.fromList))
         _ -> fieldValue
 
-syncBool : Method -> List Bool -> Model a -> Model a
-syncBool method keys =
+syncBool : String -> List Bool -> Model a -> Model a
+syncBool name keys =
   let
     names = keys |> List.map toString
   in
     Focus.update (fields_ => pairs_) <|
-      Dict.update (method |> toSignature) <|
+      Dict.update name <|
         \fieldValue ->
           case fieldValue of
             Just (BoolList default group) ->
@@ -309,50 +285,20 @@ syncBool method keys =
               |> Dict.fromList))
             _ -> fieldValue
 
-modify : Method -> Modify -> Model a -> Model a
-modify method operate model =
+modify : String -> Modify -> Model a -> Model a
+modify name operate model =
   case operate of
-    Set       value -> model |> set       method value
-    Check     value -> model |> check     method value
-    CheckBool value -> model |> checkBool method value
-    Sync      value -> model |> sync      method value
-    SyncBool  value -> model |> syncBool  method value
+    Set       value -> model |> set       name value
+    Check     value -> model |> check     name value
+    CheckBool value -> model |> checkBool name value
+    Sync      value -> model |> sync      name value
+    SyncBool  value -> model |> syncBool  name value
 
 maybe : (value -> Model a -> Model a) -> Maybe value -> Model a -> Model a
 maybe updater = Maybe.map updater >> Maybe.withDefault identity
 
 
-toSignature : Method -> Signature
-toSignature method =
-  case method of
-    EQ            column -> ( column, "eq" )
-    CONT          column -> ( column, "cont" )
-    GTEQ          column -> ( column, "gteq" )
-    LTEQ          column -> ( column, "lteq" )
-    IN            column -> ( column, "in" )
-    IS            column -> ( column, "is" )
-    IS_NULL       column -> ( column, "is_null" )
-    GTEQ_DATETIME column -> ( column, "gteq_datetime" )
-    LTEQ_DATETIME column -> ( column, "lteq_datetime" )
-
-toMethod : Signature -> Maybe Method
-toMethod signature =
-  case signature of
-    ( column, "eq" )             -> Just <| EQ            column
-    ( column, "cont" )           -> Just <| CONT          column
-    ( column, "gteq" )           -> Just <| GTEQ          column
-    ( column, "lteq" )           -> Just <| LTEQ          column
-    ( column, "in" )             -> Just <| IN            column
-    ( column, "is" )             -> Just <| IS            column
-    ( column, "is_null" )        -> Just <| IS_NULL       column
-    ( column, "gteq_datetime" )  -> Just <| GTEQ_DATETIME column
-    ( column, "lteq_datetime" )  -> Just <| LTEQ_DATETIME column
-    _ -> Nothing
-
-toName : Method -> String
-toName = toSignature >> Tuple.first
-
-toSortSignature : SortPair -> Signature
+toSortSignature : SortPair -> ( String, String )
 toSortSignature (column,order) =
   ( column
   , case order of
@@ -374,7 +320,6 @@ keys =
   , order  = "order"
   , query  = "query"
   , pairs  = "pairs"
-  , method = "method"
   , search = "search"
   , check  = "check"
   , bool   = "bool"
@@ -383,33 +328,27 @@ keys =
 decodeSearch : Location.Search -> Model a -> Model a
 decodeSearch search model =
   let
-    findQuery method =
+    findQuery name =
       List.Extra.find
         (\(key,_) ->
-          let
-            (column,op) = method |> toSignature
-          in
-            key == (keys.query ++ "[" ++ column ++ "." ++ op ++ "]")
+          key == (keys.query ++ "[" ++ name ++ "]")
         )
 
-    toStringValue method default =
-      findQuery method
+    toStringValue name default =
+      findQuery name
       >> Maybe.map Tuple.second
       >> Maybe.withDefault default
 
-    toList decoder method default search =
-      case search |> findQuery method of
+    toList decoder name default search =
+      case search |> findQuery name of
         Just _ -> []
         Nothing ->
           search
           |> List.filterMap
             (\(key,value) ->
-              let
-                (column,op) = method |> toSignature
-              in
-                if key == (column ++ "." ++ op ++ "[]")
-                  then Just (value |> decoder)
-                  else Nothing
+              if key == (name ++ "[]")
+                then Just (value |> decoder)
+                else Nothing
             )
           |>
             (\vals ->
@@ -455,15 +394,11 @@ decodeSearch search model =
     model.fields.pairs
     |> Dict.toList
     |> List.foldl
-      (\(signature,spec) ->
-        signature |> toMethod |> Maybe.map
-          (\method ->
-            case spec of
-              String    default _   -> search |> toStringValue method default |> set      method
-              CheckList default _ _ -> search |> toStringList  method default |> sync     method
-              BoolList  default _   -> search |> toBoolList    method default |> syncBool method
-          )
-        |> Maybe.withDefault identity
+      (\(name,spec) ->
+        case spec of
+          String    default _   -> search |> toStringValue name default |> set      name
+          CheckList default _ _ -> search |> toStringList  name default |> sync     name
+          BoolList  default _   -> search |> toBoolList    name default |> syncBool name
       )
       (model |> decodeSort |> decodePage)
 
@@ -476,8 +411,8 @@ encodeSearch model =
     , model.fields.pairs
       |> Dict.toList
       |> List.map
-        (\((name,op),spec) ->
-          ( name ++ "." ++ op
+        (\(name,spec) ->
+          ( name
           , spec |> specQuery
           )
         )
@@ -503,11 +438,14 @@ pageQuery =
   >> toString
   >> Query.string
 
-query : Method -> Model a -> Query.SearchValue
-query method =
-  find method
-  >> Maybe.map specQuery
-  >> Maybe.withDefault (Query.string "")
+query : String -> Model a -> ( String, Query.SearchValue )
+query name model =
+  ( name
+  , model
+    |> find name
+    |> Maybe.map specQuery
+    |> Maybe.withDefault (Query.string "")
+  )
 
 specQuery : Spec -> Query.SearchValue
 specQuery spec =
@@ -542,9 +480,8 @@ encodePairs =
   in
     Dict.toList
     >> List.map
-      (\((name,op),spec) ->
+      (\(name,spec) ->
         [ ( keys.column, name |> Encode.string )
-        , ( keys.method, op   |> Encode.string )
         , spec |> encodeSpec
         ] |> Encode.object
       )
