@@ -365,7 +365,7 @@ decodeSearch search model =
 
     decodeSort =
       search
-      |> List.Extra.find (Tuple.first >> (==) (keys.sort ++ "[]"))
+      |> List.Extra.find (Tuple.first >> (==) keys.sort)
       |> Maybe.andThen
         (\(_,value) ->
           model.fields.sort.columns
@@ -430,9 +430,9 @@ sortQuery =
   .fields
   >> .sort
   >> .current
-  >> Maybe.map (toSortString >> List.singleton)
-  >> Maybe.withDefault []
-  >> Query.list
+  >> Maybe.map toSortString
+  >> Maybe.withDefault ""
+  >> Query.string
 
 pageQuery : Model a -> Query.SearchValue
 pageQuery =
