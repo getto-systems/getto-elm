@@ -318,7 +318,7 @@ keys =
   , sort   = "sort"
   , column = "column"
   , order  = "order"
-  , query  = "query"
+  , query  = "q"
   , pairs  = "pairs"
   , search = "search"
   , check  = "check"
@@ -340,29 +340,32 @@ decodeSearch search model =
       >> Maybe.withDefault default
 
     toList decoder name default search =
-      case search |> findQuery name of
-        Just _ -> []
-        Nothing ->
-          search
-          |> List.filterMap
-            (\(key,value) ->
-              if key == (name ++ "[]")
-                then Just (value |> decoder)
-                else Nothing
-            )
-          |>
-            (\vals ->
-              if vals |> List.isEmpty
-                then default
-                else vals
-            )
+      search
+      |> List.filterMap
+        (\(key,value) ->
+          if key == (keys.query ++ "[" ++ name ++ "][]")
+            then value |> decoder
+            else Nothing
+        )
+      |>
+        (\vals ->
+          if vals |> List.isEmpty
+            then default
+            else vals
+        )
 
-    toStringList = toList identity
-    toBoolList   = toList toBool
+    toStringList = toList (identity >> Just)
+    toBoolList   = toList
+      (\value ->
+        case value of
+          "True"  -> Just True
+          "False" -> Just False
+          _ -> Nothing
+      )
 
     decodeSort =
       search
-      |> List.Extra.find (Tuple.first >> (==) keys.sort)
+      |> List.Extra.find (Tuple.first >> (==) (keys.sort ++ "[]"))
       |> Maybe.andThen
         (\(_,value) ->
           model.fields.sort.columns
