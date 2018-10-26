@@ -44,6 +44,7 @@ module Getto.Form.Edit exposing
   , passwordBox
   , fileBox
   , textarea
+  , textareaSmall
   , toggleBox
   , boolList
   , boolListInline
@@ -407,6 +408,14 @@ textarea msg name model =
   H.textarea
     [ A.rows 8
     , A.class "is-large"
+    , E.onInput (Field.Set >> msg name)
+    ]
+    [ model |> Field.get name |> H.text ]
+
+textareaSmall : Modify msg -> String -> Content a msg
+textareaSmall msg name model =
+  H.textarea
+    [ A.rows 2
     , E.onInput (Field.Set >> msg name)
     ]
     [ model |> Field.get name |> H.text ]
