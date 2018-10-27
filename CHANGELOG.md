@@ -1,3 +1,7 @@
+# Version : 0.1.0
+
+fix: several deprecated
+
 # Version : 0.0.18
 
 add: maybe to Form
